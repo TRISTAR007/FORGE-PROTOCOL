@@ -13,13 +13,15 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { EMPTY_PROGRESS, type Measurements, type ProgressData, type StrengthTests } from '@/lib/types';
 import { todayKey } from '@/lib/utils';
+import { withDayStatus } from '@/lib/program/training-stats';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+type Updater = (prev: ProgressData) => ProgressData;
 
 interface ProgressContextValue {
   progress: ProgressData;
   saveStatus: SaveStatus;
-  toggleChecklistItem: (dayNumber: number, index: number, checklistLength: number) => void;
+  toggleChecklistItem: (dayNumber: number, index: number) => void;
   toggleExerciseCheck: (dayNumber: number, index: number) => void;
   completeAllExercises: (dayNumber: number, count: number) => void;
   setWater: (dateKey: string, amount: number) => void;
@@ -34,70 +36,207 @@ interface ProgressContextValue {
 
 const ProgressContext = createContext<ProgressContextValue | null>(null);
 
+const SAVE_DEBOUNCE_MS = 500;
+const RETRY_START_MS = 1000;
+const RETRY_MAX_MS = 30000;
+
+function normalize(raw: unknown): ProgressData {
+  return { ...EMPTY_PROGRESS, ...((raw as Partial<ProgressData> | null) ?? {}) };
+}
+
+/**
+ * Owns the user's progress document and keeps it synced to Supabase.
+ *
+ * Sync guarantees:
+ *  - Changes are debounced, but flushed immediately when the tab is
+ *    hidden / closed or the connection comes back.
+ *  - Unsaved changes are mirrored to localStorage, so a crash or closed
+ *    tab doesn't lose them — they're replayed on the next load.
+ *  - Failed saves retry with exponential backoff.
+ *  - Writes are conditional on the row's `updated_at` (optimistic
+ *    concurrency). If another device saved in the meantime, the latest
+ *    server copy is fetched and this device's unsaved changes are
+ *    re-applied on top of it, instead of overwriting the other device.
+ */
 export function ProgressProvider({
   userId,
   initialData,
+  initialUpdatedAt,
   children,
 }: {
   userId: string;
   initialData: ProgressData;
+  initialUpdatedAt: string | null;
   children: ReactNode;
 }) {
-  const [progress, setProgress] = useState<ProgressData>({ ...EMPTY_PROGRESS, ...initialData });
+  const [progress, setProgress] = useState<ProgressData>(() => normalize(initialData));
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const supabase = useMemo(() => createClient(), []);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latest = useRef(progress);
-  latest.current = progress;
+  const backupKey = `forge:unsaved-progress:${userId}`;
 
-  const persist = useCallback(() => {
+  const latest = useRef<ProgressData>(progress);
+  /** Server `updated_at` our local copy is based on. */
+  const baseVersion = useRef<string | null>(initialUpdatedAt);
+  /** Mutations not yet confirmed by the server, in order — replayed on conflict. */
+  const pending = useRef<Updater[]>([]);
+  const inFlight = useRef(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryDelay = useRef(RETRY_START_MS);
+  const saveRef = useRef<() => Promise<void>>(async () => {});
+
+  const writeBackup = useCallback(() => {
+    try {
+      localStorage.setItem(backupKey, JSON.stringify({ base: baseVersion.current, data: latest.current }));
+    } catch {
+      // Storage full / blocked (private mode) — cloud sync still works.
+    }
+  }, [backupKey]);
+
+  const clearBackup = useCallback(() => {
+    try {
+      localStorage.removeItem(backupKey);
+    } catch {
+      // ignore
+    }
+  }, [backupKey]);
+
+  const save = useCallback(async () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
-      setSaveStatus('saving');
-      const { error } = await supabase
-        .from('user_progress')
-        .upsert({ user_id: userId, data: latest.current }, { onConflict: 'user_id' });
-      setSaveStatus(error ? 'error' : 'saved');
-    }, 500);
-  }, [supabase, userId]);
+    if (retryTimer.current) clearTimeout(retryTimer.current);
+    saveTimer.current = null;
+    retryTimer.current = null;
+    if (inFlight.current || pending.current.length === 0) return;
+
+    inFlight.current = true;
+    setSaveStatus('saving');
+    const sentCount = pending.current.length;
+    const snapshot = latest.current;
+    let failed = false;
+
+    try {
+      let query = supabase.from('user_progress').update({ data: snapshot }).eq('user_id', userId);
+      if (baseVersion.current) query = query.eq('updated_at', baseVersion.current);
+      const { data: rows, error } = await query.select('updated_at');
+      if (error) throw error;
+
+      if (rows && rows.length > 0) {
+        baseVersion.current = rows[0].updated_at as string;
+        pending.current = pending.current.slice(sentCount);
+      } else {
+        // Nothing matched: the row changed elsewhere (or is missing).
+        const { data: remote, error: fetchError } = await supabase
+          .from('user_progress')
+          .select('data, updated_at')
+          .eq('user_id', userId)
+          .maybeSingle();
+        if (fetchError) throw fetchError;
+
+        if (!remote) {
+          const { data: created, error: insertError } = await supabase
+            .from('user_progress')
+            .upsert({ user_id: userId, data: snapshot }, { onConflict: 'user_id' })
+            .select('updated_at')
+            .single();
+          if (insertError) throw insertError;
+          baseVersion.current = created.updated_at as string;
+          pending.current = pending.current.slice(sentCount);
+        } else {
+          // Rebase: re-apply every unsaved local change onto the newer
+          // server copy, then loop around to save the merged result.
+          baseVersion.current = remote.updated_at as string;
+          const rebased = pending.current.reduce((acc, fn) => fn(acc), normalize(remote.data));
+          latest.current = rebased;
+          setProgress(rebased);
+        }
+      }
+      retryDelay.current = RETRY_START_MS;
+    } catch {
+      failed = true;
+    } finally {
+      inFlight.current = false;
+    }
+
+    if (failed) {
+      setSaveStatus('error');
+      writeBackup();
+      retryTimer.current = setTimeout(() => void saveRef.current(), retryDelay.current);
+      retryDelay.current = Math.min(retryDelay.current * 2, RETRY_MAX_MS);
+      return;
+    }
+
+    if (pending.current.length > 0) {
+      writeBackup();
+      void saveRef.current();
+    } else {
+      clearBackup();
+      setSaveStatus('saved');
+    }
+  }, [supabase, userId, writeBackup, clearBackup]);
 
   useEffect(() => {
-    return () => {
+    saveRef.current = save;
+  }, [save]);
+
+  const mutate = useCallback(
+    (updater: Updater) => {
+      const next = updater(latest.current);
+      if (next === latest.current) return;
+      latest.current = next;
+      setProgress(next);
+      pending.current.push(updater);
+      writeBackup();
       if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => void saveRef.current(), SAVE_DEBOUNCE_MS);
+    },
+    [writeBackup]
+  );
+
+  // Replay changes left unsaved by a previous visit (closed tab, crash,
+  // offline). Only applied if the server copy hasn't moved on since —
+  // otherwise the server's newer data wins.
+  useEffect(() => {
+    let stored: { base: string | null; data: unknown } | null = null;
+    try {
+      stored = JSON.parse(localStorage.getItem(backupKey) ?? 'null');
+    } catch {
+      stored = null;
+    }
+    if (!stored?.data) return;
+    if (stored.base !== initialUpdatedAt) {
+      clearBackup();
+      return;
+    }
+    const restored = normalize(stored.data);
+    mutate(() => restored);
+    // Run once on mount only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Flush right away when the page is hidden/closed or we come back online.
+  useEffect(() => {
+    const flush = () => void saveRef.current();
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flush);
+    window.addEventListener('online', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flush);
+      window.removeEventListener('online', flush);
+      flush();
     };
   }, []);
 
-  const mutate = useCallback(
-    (updater: (prev: ProgressData) => ProgressData) => {
-      setProgress((prev) => {
-        const next = updater(prev);
-        return next;
-      });
-      persist();
-    },
-    [persist]
-  );
-
   const toggleChecklistItem = useCallback(
-    (dayNumber: number, index: number, checklistLength: number) => {
+    (dayNumber: number, index: number) => {
       mutate((prev) => {
         const key = String(dayNumber);
         const current = prev.checklistCompleted[key] ?? [];
-        const has = current.includes(index);
-        const nextList = has ? current.filter((i) => i !== index) : [...current, index];
-
-        const completedDays = new Set(prev.completedDays);
-        if (nextList.length === checklistLength && checklistLength > 0) {
-          completedDays.add(dayNumber);
-        } else {
-          completedDays.delete(dayNumber);
-        }
-
-        return {
-          ...prev,
-          checklistCompleted: { ...prev.checklistCompleted, [key]: nextList },
-          completedDays: Array.from(completedDays).sort((a, b) => a - b),
-        };
+        const nextList = current.includes(index) ? current.filter((i) => i !== index) : [...current, index];
+        return withDayStatus({ ...prev, checklistCompleted: { ...prev.checklistCompleted, [key]: nextList } }, dayNumber);
       });
     },
     [mutate]
@@ -108,23 +247,28 @@ export function ProgressProvider({
       mutate((prev) => {
         const key = String(dayNumber);
         const current = prev.exerciseChecks[key] ?? [];
-        const has = current.includes(index);
-        const nextList = has ? current.filter((i) => i !== index) : [...current, index];
-        return { ...prev, exerciseChecks: { ...prev.exerciseChecks, [key]: nextList } };
+        const nextList = current.includes(index) ? current.filter((i) => i !== index) : [...current, index];
+        return withDayStatus({ ...prev, exerciseChecks: { ...prev.exerciseChecks, [key]: nextList } }, dayNumber);
       });
     },
     [mutate]
   );
 
+  /** Called when a guided session finishes — checks every exercise and logs the day. */
   const completeAllExercises = useCallback(
     (dayNumber: number, count: number) => {
-      mutate((prev) => ({
-        ...prev,
-        exerciseChecks: {
-          ...prev.exerciseChecks,
-          [String(dayNumber)]: Array.from({ length: count }, (_, i) => i),
-        },
-      }));
+      mutate((prev) =>
+        withDayStatus(
+          {
+            ...prev,
+            exerciseChecks: {
+              ...prev.exerciseChecks,
+              [String(dayNumber)]: Array.from({ length: count }, (_, i) => i),
+            },
+          },
+          dayNumber
+        )
+      );
     },
     [mutate]
   );
@@ -155,8 +299,7 @@ export function ProgressProvider({
     (dateKey: string, taskId: string) => {
       mutate((prev) => {
         const current = prev.dailyTasks[dateKey] ?? [];
-        const has = current.includes(taskId);
-        const next = has ? current.filter((id) => id !== taskId) : [...current, taskId];
+        const next = current.includes(taskId) ? current.filter((id) => id !== taskId) : [...current, taskId];
         return { ...prev, dailyTasks: { ...prev.dailyTasks, [dateKey]: next } };
       });
     },

@@ -3,12 +3,12 @@
 import Link from 'next/link';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useProgress } from '@/context/progress-context';
 import { useProgram } from '@/hooks/use-program';
+import { useTrainingStats } from '@/hooks/use-training-stats';
 import { splitLabel } from '@/lib/program/program';
 
 export function WeekStrip() {
-  const { progress } = useProgress();
+  const { trainedDays } = useTrainingStats();
   const { todayDayNumber, getWorkout } = useProgram();
 
   const weekStart = todayDayNumber - ((todayDayNumber - 1) % 7);
@@ -21,7 +21,7 @@ export function WeekStrip() {
         {days.map((dayNumber) => {
           const workout = getWorkout(dayNumber);
           const isToday = dayNumber === todayDayNumber;
-          const isDone = progress.completedDays.includes(dayNumber);
+          const isDone = trainedDays.has(dayNumber);
           const isFuture = dayNumber > todayDayNumber;
 
           return (

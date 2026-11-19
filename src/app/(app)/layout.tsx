@@ -34,7 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   let { data: progressRow } = await supabase
     .from('user_progress')
-    .select('data')
+    .select('data, updated_at')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -42,7 +42,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     const { data: created } = await supabase
       .from('user_progress')
       .insert({ user_id: user.id, data: EMPTY_PROGRESS })
-      .select('data')
+      .select('data, updated_at')
       .single();
     progressRow = created;
   }
@@ -52,7 +52,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <AuthProvider user={{ id: user.id, email: user.email ?? null }} profile={profile as Profile | null}>
       <ToastProvider>
-        <ProgressProvider userId={user.id} initialData={initialProgress}>
+        <ProgressProvider
+          userId={user.id}
+          initialData={initialProgress}
+          initialUpdatedAt={(progressRow?.updated_at as string | undefined) ?? null}
+        >
           <AppShell>{children}</AppShell>
         </ProgressProvider>
       </ToastProvider>

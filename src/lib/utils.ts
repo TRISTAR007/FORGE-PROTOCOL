@@ -58,19 +58,24 @@ export function pct(numerator: number, denominator: number): number {
 }
 
 /**
- * Current streak of consecutive trained days, counting backward from
- * today (or yesterday, so a streak isn't broken just because today's
- * workout hasn't happened yet).
+ * Validates a post-login `next` redirect target. Only same-site absolute
+ * paths are allowed — anything else (`//evil.com`, `/\evil.com`,
+ * `@evil.com`, `https://…`) falls back, so a crafted link can't bounce a
+ * freshly signed-in user to another site.
  */
-export function calculateStreak(completedDays: number[], currentDayNumber: number): number {
-  const set = new Set(completedDays);
-  let streak = 0;
-  let day = set.has(currentDayNumber) ? currentDayNumber : currentDayNumber - 1;
-  while (day >= 1 && set.has(day)) {
-    streak++;
-    day--;
+export function safeNextPath(next: string | null | undefined, fallback = '/dashboard'): string {
+  if (!next || !next.startsWith('/')) return fallback;
+  try {
+    // Resolve against a sentinel origin using the same parser the browser
+    // uses — it strips tabs/newlines and treats `\` as `/` exactly as a
+    // real navigation would, so tricks like "/\t/evil.com" are caught.
+    const sentinel = 'http://same-origin.invalid';
+    const url = new URL(next, sentinel);
+    if (url.origin !== sentinel) return fallback;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return fallback;
   }
-  return streak;
 }
 
 export function initials(name: string | null | undefined, email: string | null | undefined): string {

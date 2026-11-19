@@ -6,7 +6,7 @@ import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { useProgress } from '@/context/progress-context';
 import { useProgram } from '@/hooks/use-program';
-import { calculateStreak } from '@/lib/utils';
+import { useTrainingStats } from '@/hooks/use-training-stats';
 import { PHASES } from '@/lib/program/program';
 
 const STREAK_THRESHOLDS = [7, 30, 60, 100, 365];
@@ -19,8 +19,8 @@ interface Milestone {
 
 export function MilestoneCelebration() {
   const { progress, markMilestoneCelebrated } = useProgress();
-  const { todayDayNumber, today } = useProgram();
-  const streak = calculateStreak(progress.completedDays, todayDayNumber);
+  const { today } = useProgram();
+  const { streak } = useTrainingStats();
 
   const pending = useMemo<Milestone | null>(() => {
     const candidates: Milestone[] = [];
@@ -47,8 +47,7 @@ export function MilestoneCelebration() {
 
     const uncelebrated = candidates.filter((c) => !progress.celebratedMilestones.includes(c.id));
     return uncelebrated.length > 0 ? uncelebrated[uncelebrated.length - 1] : null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [streak, today.phase, progress.celebratedMilestones]);
+  },[streak, today.phase, progress.celebratedMilestones]);
 
   if (!pending) return null;
 

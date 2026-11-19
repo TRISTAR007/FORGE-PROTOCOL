@@ -27,7 +27,7 @@ export function DailyChecklist({ dayNumber, items }: { dayNumber: number; items:
             return (
               <button
                 key={index}
-                onClick={() => toggleChecklistItem(dayNumber, index, items.length)}
+                onClick={() => toggleChecklistItem(dayNumber, index)}
                 className="flex w-full items-center gap-3 rounded-sm px-2 py-2 text-left transition-colors hover:bg-surface-hover"
               >
                 <span

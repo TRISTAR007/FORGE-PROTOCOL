@@ -8,14 +8,12 @@ import { WaterTracker } from '@/components/dashboard/water-tracker';
 import { DailyTasksWidget } from '@/components/dashboard/daily-tasks-widget';
 import { useProgress } from '@/context/progress-context';
 import { useProgram } from '@/hooks/use-program';
-import { calculateStreak } from '@/lib/utils';
+import { useTrainingStats } from '@/hooks/use-training-stats';
 
 export default function DashboardPage() {
   const { progress } = useProgress();
-  const { today, todayDayNumber, totalDays } = useProgram();
-
-  const streak = calculateStreak(progress.completedDays, todayDayNumber);
-  const workoutsCompleted = progress.completedDays.length;
+  const { today, totalDays } = useProgram();
+  const { streak, workoutsCompleted } = useTrainingStats();
   const pushups = progress.strengthTests.pushups;
   const weight = progress.measurements.weight;
 

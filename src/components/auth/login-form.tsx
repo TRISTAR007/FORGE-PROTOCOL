@@ -9,11 +9,12 @@ import { Input } from '@/components/ui/input';
 import { FormError } from '@/components/ui/form-error';
 import { GoogleButton } from './google-button';
 import { OrDivider } from './or-divider';
+import { safeNextPath } from '@/lib/utils';
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get('next') || '/dashboard';
+  const next = safeNextPath(searchParams.get('next'));
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

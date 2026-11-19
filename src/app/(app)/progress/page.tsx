@@ -6,13 +6,11 @@ import { HabitCalendar } from '@/components/progress/habit-calendar';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Dumbbell, Flame, ListChecks } from 'lucide-react';
 import { useProgress } from '@/context/progress-context';
-import { useProgram } from '@/hooks/use-program';
-import { calculateStreak } from '@/lib/utils';
+import { useTrainingStats } from '@/hooks/use-training-stats';
 
 export default function ProgressPage() {
   const { progress } = useProgress();
-  const { todayDayNumber } = useProgram();
-  const streak = calculateStreak(progress.completedDays, todayDayNumber);
+  const { streak, workoutsCompleted } = useTrainingStats();
 
   return (
     <div className="animate-fadeIn space-y-6">
@@ -22,7 +20,7 @@ export default function ProgressPage() {
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <StatCard icon={ListChecks} label="Workouts" value={String(progress.completedDays.length)} sub="logged" />
+        <StatCard icon={ListChecks} label="Workouts" value={String(workoutsCompleted)} sub="logged" />
         <StatCard icon={Flame} label="Streak" value={String(streak)} sub="days" />
         <StatCard
           icon={Dumbbell}

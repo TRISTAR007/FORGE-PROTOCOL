@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { X, Pause, Play, SkipForward, CheckCircle2 } from 'lucide-react';
 import { RingProgress } from '@/components/ui/ring-progress';
 import { Button } from '@/components/ui/button';
@@ -20,42 +20,76 @@ export function SessionPlayer({
   onClose: () => void;
   onComplete: () => void;
 }) {
-  const stepsRef = useRef<SessionStep[]>(buildSessionSteps(exercises));
-  const steps = stepsRef.current;
+  // Built once per session; the exercise list can't change mid-workout.
+  const [steps] = useState<SessionStep[]>(() => buildSessionSteps(exercises));
 
   const [stepIndex, setStepIndex] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(steps[0]?.seconds ?? 0);
   const [paused, setPaused] = useState(false);
   const [finished, setFinished] = useState(steps.length === 0);
+  // Wall-clock time (ms) the current timed step ends; null while paused or
+  // on a rep-based step. The countdown is derived from this rather than
+  // from chained 1s timeouts, which browsers throttle or freeze when the
+  // tab is backgrounded or the phone screen locks.
+  const [endAt, setEndAt] = useState<number | null>(() =>
+    steps[0]?.isTimed ? Date.now() + steps[0].seconds * 1000 : null
+  );
 
   const step = steps[stepIndex];
 
-  useEffect(() => {
-    if (step) setSecondsLeft(step.seconds);
-    setPaused(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stepIndex]);
+  const startStep = useCallback(
+    (index: number) => {
+      const next = steps[index];
+      setStepIndex(index);
+      setPaused(false);
+      setSecondsLeft(next.seconds);
+      setEndAt(next.isTimed ? Date.now() + next.seconds * 1000 : null);
+    },
+    [steps]
+  );
 
   const goNext = useCallback(() => {
-    setStepIndex((i) => {
-      if (i + 1 >= steps.length) {
-        setFinished(true);
-        return i;
-      }
-      return i + 1;
-    });
-  }, [steps.length]);
+    if (stepIndex + 1 >= steps.length) {
+      setEndAt(null);
+      setFinished(true);
+      return;
+    }
+    startStep(stepIndex + 1);
+  }, [stepIndex, steps.length, startStep]);
 
   // Countdown for timed steps (holds + rest periods).
   useEffect(() => {
-    if (finished || paused || !step?.isTimed) return;
-    if (secondsLeft <= 0) {
-      goNext();
+    if (finished || paused || endAt === null) return;
+    let done = false;
+    const tick = () => {
+      if (done) return;
+      const remaining = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+      setSecondsLeft(remaining);
+      if (remaining <= 0) {
+        done = true;
+        goNext();
+      }
+    };
+    const id = setInterval(tick, 250);
+    // Catch up immediately when the person returns to the tab.
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      done = true;
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, [endAt, paused, finished, goNext]);
+
+  const togglePause = () => {
+    if (paused) {
+      setEndAt(Date.now() + secondsLeft * 1000);
+      setPaused(false);
       return;
     }
-    const t = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [secondsLeft, paused, finished, step, goNext]);
+    if (endAt !== null) setSecondsLeft(Math.max(0, Math.ceil((endAt - Date.now()) / 1000)));
+    setEndAt(null);
+    setPaused(true);
+  };
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -217,7 +251,7 @@ export function SessionPlayer({
 
       <div className="flex items-center justify-center gap-3 px-6 pb-8 pt-2 sm:pb-10">
         {step.isTimed ? (
-          <Button variant="secondary" size="lg" onClick={() => setPaused((p) => !p)} className="w-32">
+          <Button variant="secondary" size="lg" onClick={togglePause} className="w-32">
             {paused ? <Play size={18} /> : <Pause size={18} />}
             {paused ? 'Resume' : 'Pause'}
           </Button>
