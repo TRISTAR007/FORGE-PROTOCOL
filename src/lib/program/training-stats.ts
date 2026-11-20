@@ -119,13 +119,17 @@ export function repTargetTop(reps: string | undefined): number | null {
   return nums ? Number(nums[nums.length - 1]) : null;
 }
 
-/** Best single-set reps per exercise key across the given guided-session logs. */
-export function getPersonalBests(logs: SessionLog[]): Map<string, { reps: number; date: string }> {
+/** Best single-set reps per exercise key across guided-session and quick-workout logs. */
+export function getPersonalBests(
+  logs: (Pick<SessionLog, 'reps' | 'date' | 'keys'> & { dayNumber?: number })[]
+): Map<string, { reps: number; date: string }> {
   const best = new Map<string, { reps: number; date: string }>();
   for (const log of logs) {
-    const exercises = resolveWorkout(log.dayNumber, new Date()).exercises;
+    // Newer logs record their exercise keys; older ones predate training modes, so resolve the home program.
+    const keys =
+      log.keys ?? (log.dayNumber ? resolveWorkout(log.dayNumber, new Date()).exercises.map((e) => e.exerciseKey) : []);
     log.reps.forEach((sets, exerciseIndex) => {
-      const key = exercises[exerciseIndex]?.exerciseKey;
+      const key = keys[exerciseIndex];
       if (!key) return;
       for (const reps of sets) {
         if (reps == null) continue;

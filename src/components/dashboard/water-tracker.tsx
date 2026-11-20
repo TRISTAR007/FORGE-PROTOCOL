@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { Droplet, Minus, Plus } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { cn, todayKey } from '@/lib/utils';
@@ -9,6 +11,7 @@ const MIN_GOAL = 4;
 const MAX_GOAL = 16;
 
 export function WaterTracker() {
+  const t = useTranslations('dashboard');
   const { progress, settings, setWater, updateSettings } = useProgress();
   const key = todayKey();
   const goal = settings.waterGoal;
@@ -18,7 +21,7 @@ export function WaterTracker() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Hydration</CardTitle>
+        <CardTitle>{t('hydration')}</CardTitle>
         <div className="flex items-center gap-1">
           <button
             onClick={() => updateSettings({ waterGoal: Math.max(MIN_GOAL, goal - 1) })}
@@ -29,7 +32,7 @@ export function WaterTracker() {
             <Minus size={12} />
           </button>
           <span className={cn('font-mono text-xs', current >= goal ? 'text-ok' : 'text-ink-faint')}>
-            {current}/{goal} glasses
+            {t('glasses', { current, goal })}
           </span>
           <button
             onClick={() => updateSettings({ waterGoal: Math.min(MAX_GOAL, goal + 1) })}
@@ -62,8 +65,8 @@ export function WaterTracker() {
         </div>
         <p className="mt-3 text-xs text-ink-faint">
           {current >= goal
-            ? 'Goal hit for today — nice.'
-            : 'Tap a glass to log it. 2L+ a day supports recovery and skin. Use − / + to change your goal.'}
+            ? t('hydrationDone')
+            : t('hydrationHint')}
         </p>
       </CardContent>
     </Card>

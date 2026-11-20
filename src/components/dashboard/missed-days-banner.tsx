@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { useState } from 'react';
 import { CalendarClock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,6 +19,7 @@ const MIN_MISSED = 2;
  * day number, so nothing already done is lost or re-dated.
  */
 export function MissedDaysBanner() {
+  const t = useTranslations('dashboard');
   const { missed } = useTrainingStats();
   const { setProgramStartDate } = useAuth();
   const { toast } = useToast();
@@ -31,31 +34,30 @@ export function MissedDaysBanner() {
     // Start date such that today = resumeDay.
     const ok = await setProgramStartDate(toDateKey(addDays(new Date(), -(resumeDay - 1))));
     setSaving(false);
-    if (ok) toast(`Schedule moved — today is Day ${resumeDay}.`);
-    else toast('Could not update your schedule.', 'error');
+    if (ok) toast(t('missedDone', { day: resumeDay }));
+    else toast(t('missedError'), 'error');
   };
 
   return (
-    <div className="relative flex flex-col gap-3 rounded-md border border-brass/30 bg-brass-dim/50 p-4 pr-10 sm:flex-row sm:items-center sm:justify-between">
+    <div className="relative flex flex-col gap-3 rounded-md border border-brass/30 bg-brass-dim/50 p-4 pe-10 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex gap-3">
         <CalendarClock size={20} className="mt-0.5 shrink-0 text-brass" />
         <div>
           <p className="text-sm font-semibold text-ink">
-            You&apos;ve missed {missed.count} workouts since Day {resumeDay}.
+            {t('missedTitle', { count: missed.count, day: resumeDay })}
           </p>
           <p className="mt-0.5 text-sm text-ink-muted">
-            Pick up where you left off — your schedule shifts so today becomes Day {resumeDay}. Nothing you&apos;ve logged is
-            lost.
+            {t('missedBody', { day: resumeDay })}
           </p>
         </div>
       </div>
       <Button size="sm" onClick={() => void resume()} loading={saving} className="shrink-0 self-start sm:self-center">
-        Resume from Day {resumeDay}
+        {t('missedButton', { day: resumeDay })}
       </Button>
       <button
         onClick={() => setDismissed('1')}
-        aria-label="Dismiss"
-        className="absolute right-2 top-2 rounded-xs p-1.5 text-ink-faint hover:bg-surface-hover hover:text-ink"
+        aria-label={t('dismiss')}
+        className="absolute end-2 top-2 rounded-xs p-1.5 text-ink-faint hover:bg-surface-hover hover:text-ink"
       >
         <X size={14} />
       </button>

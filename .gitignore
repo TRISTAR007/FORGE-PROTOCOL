@@ -8,3 +8,9 @@ node_modules
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
+# Full-resolution AI art originals (kept in Figma; web versions live in public/images/coaches)
+/art/
+
+# Capacitor build output
+/android/app/build/
+/ios/App/build/

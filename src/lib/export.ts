@@ -27,7 +27,7 @@ export function exportJson(progress: ProgressData, profile: Profile | null): str
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
-      app: 'FORGE Protocol',
+      app: 'Level Up Dojo',
       profile: profile
         ? { full_name: profile.full_name, program_start_date: profile.program_start_date, created_at: profile.created_at }
         : null,
@@ -101,15 +101,15 @@ export function dailyReminderIcs(time: string, daysRemaining: number, siteUrl: s
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//FORGE Protocol//Daily Reminder//EN',
+    'PRODID:-//Level Up Dojo//Daily Reminder//EN',
     'CALSCALE:GREGORIAN',
     'BEGIN:VEVENT',
-    `UID:forge-daily-${now.getTime()}@forge-protocol`,
+    `UID:dojo-daily-${now.getTime()}@level-up-dojo`,
     `DTSTAMP:${icsDate(now, true)}`,
     `DTSTART:${icsDate(first, false)}`,
     'DURATION:PT30M',
     `RRULE:FREQ=DAILY;COUNT=${Math.max(1, daysRemaining)}`,
-    'SUMMARY:FORGE — time to train',
+    'SUMMARY:Level Up Dojo — time to train',
     `DESCRIPTION:Open today's workout: ${link}`,
     `URL:${link}`,
     'BEGIN:VALARM',

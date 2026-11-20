@@ -1,15 +1,31 @@
-/** Lucide "flame" glyph (24×24 viewBox) — the FORGE mark, reused for icons, the OG image and share cards. */
-export const FLAME_PATH =
-  'M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z';
+/** Single source for the product name, so a future rename is one edit. */
+export const APP_NAME = 'Level Up Dojo';
+export const APP_NAME_UPPER = 'LEVEL UP DOJO';
+export const APP_SHORT_NAME = 'Dojo';
+export const APP_TAGLINE = 'Your real-life training arc';
+
+/**
+ * The Level Up Dojo mark: two stacked "level up" chevrons and a spark,
+ * drawn on a 24×24 viewBox with round 3px strokes. Reused by the in-app
+ * logo, generated app icons, the OG image and share cards.
+ */
+export const LOGO_PATHS = ['M5 13.5 12 6.5l7 7', 'M5 19.5l7-7 7 7'];
+export const LOGO_SPARK = 'M19 2.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z';
 
 export const BRAND = {
-  bg: '#131417',
-  surface: '#1C1E22',
-  line: '#2B2D33',
-  ink: '#F4F1EA',
-  muted: '#ABADB4',
-  faint: '#919299',
-  forge: '#FF6A2B',
-  brass: '#C9A15A',
+  bg: '#0C0A1D',
+  surface: '#16122E',
+  surfaceRaised: '#1E1940',
+  line: '#2E2758',
+  ink: '#F6F2FF',
+  muted: '#BDB5E0',
+  faint: '#9C94C6',
+  primary: '#FF4D94',
+  violet: '#8B5CF6',
+  gold: '#FFC94A',
+  aqua: '#3DE3F5',
   ok: '#4ADE80',
 };
+
+/** CSS gradient used on the logo tile and primary hero accents. */
+export const BRAND_GRADIENT = `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.violet} 100%)`;

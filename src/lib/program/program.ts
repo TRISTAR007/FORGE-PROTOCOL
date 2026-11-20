@@ -1,4 +1,4 @@
-import type { DayTemplate, Phase, ResolvedWorkout, SplitDay, WorkoutExercise } from '@/lib/types';
+import type { DayTemplate, Phase, ResolvedWorkout, SplitDay, TrainingMode, WorkoutExercise } from '@/lib/types';
 import { addDays, formatLongDate } from '@/lib/utils';
 import { quoteForDay } from './quotes';
 
@@ -309,6 +309,81 @@ export function splitLabel(split: SplitDay): string {
   return map[split];
 }
 
+/**
+ * Equipment versions of the same weekly split. Same days, same phases,
+ * and — deliberately — the same five exercises per training day as the
+ * home program, so day completion, streaks and logs stay valid if
+ * someone switches mode mid-year. Keyed by split slot (1–5).
+ */
+const MODE_TIERS: Record<Exclude<TrainingMode, 'home'>, Record<number, WorkoutExercise[][]>> = {
+  dumbbells: {
+    1: [
+      [ex('dbFloorPress', 3, '10-12', '75s'), ex('dbShoulderPress', 3, '8-12', '75s'), ex('inclinePushup', 3, '10-15', '60s'), ex('dbTricepExtension', 3, '10-12', '60s'), ex('plank', 3, '20-30s', '60s')],
+      [ex('dbFloorPress', 4, '8-12', '75s'), ex('dbArnoldPress', 3, '8-10', '90s'), ex('standardPushup', 3, '10-15', '60s'), ex('dbLateralRaise', 3, '12-15', '60s'), ex('dbTricepExtension', 3, '12-15', '60s')],
+      [ex('dbFloorPress', 4, '10-12', '75s', 'Slow lowering'), ex('dbShoulderPress', 4, '8-10', '90s'), ex('declinePushup', 3, '10-15', '75s'), ex('dbLateralRaise', 4, '12-15', '45s'), ex('diamondPushup', 3, '10-12', '75s')],
+    ],
+    2: [
+      [ex('dbRow', 3, '10 each', '60s'), ex('dbBicepCurl', 3, '10-12', '60s'), ex('supermanHold', 3, '20-30s', '60s'), ex('reverseSnowAngel', 3, '12', '60s'), ex('dbShrug', 3, '12-15', '60s')],
+      [ex('dbRow', 4, '10 each', '60s'), ex('dbRomanianDeadlift', 3, '10-12', '90s'), ex('dbHammerCurl', 3, '10-12', '60s'), ex('reverseSnowAngel', 3, '15', '60s'), ex('dbBicepCurl', 3, '10-12', '60s')],
+      [ex('dbRenegadeRow', 3, '8 each', '75s'), ex('dbRow', 4, '12 each', '60s'), ex('dbRomanianDeadlift', 4, '10', '90s'), ex('dbHammerCurl', 3, '12', '60s'), ex('dbShrug', 3, '15', '60s')],
+    ],
+    3: [
+      [ex('dbGobletSquat', 3, '12-15', '75s'), ex('reverseLunge', 3, '10 each', '60s'), ex('gluteBridge', 3, '15-20', '60s'), ex('calfRaise', 3, '20', '45s'), ex('wallSit', 3, '30s', '60s')],
+      [ex('dbGobletSquat', 4, '10-12', '75s'), ex('dbRomanianDeadlift', 3, '10-12', '90s'), ex('dbLunge', 3, '10 each', '75s'), ex('singleLegGluteBridge', 3, '10 each', '60s'), ex('singleLegCalfRaise', 3, '12 each', '45s')],
+      [ex('dbGobletSquat', 4, '12-15', '75s'), ex('bulgarianSplitSquat', 4, '10 each', '90s'), ex('dbRomanianDeadlift', 4, '10', '90s'), ex('jumpSquat', 3, '10', '75s'), ex('singleLegCalfRaise', 4, '15 each', '45s')],
+    ],
+    4: [
+      [ex('plank', 3, '30s', '60s'), ex('deadBug', 3, '10 each', '60s'), ex('russianTwist', 3, '20 total', '45s'), ex('birdDog', 3, '10 each', '45s'), ex('catCow', 1, '10', '0s')],
+      [ex('hollowHold', 3, '30s', '45s'), ex('russianTwist', 3, '20 total', '45s', 'Hold a dumbbell'), ex('legRaise', 3, '12', '60s'), ex('sidePlank', 2, '30s each', '45s'), ex('shoulderTap', 3, '20 total', '45s')],
+      [ex('hollowHold', 3, '40s', '45s'), ex('vUp', 3, '10', '60s'), ex('sidePlankHipDip', 3, '10 each', '45s'), ex('mountainClimber', 4, '40s', '60s'), ex('plankWalkup', 3, '10', '60s')],
+    ],
+    5: [
+      [ex('dbThruster', 3, '10', '60s'), ex('jumpingJack', 3, '30s', '30s'), ex('dbRow', 3, '10 each', '45s'), ex('highKnees', 3, '20s', '30s'), ex('stepBackBurpee', 3, '6-8', '60s')],
+      [ex('dbThruster', 4, '12', '60s'), ex('skaterHop', 3, '30s', '45s'), ex('dbGobletSquat', 3, '15', '45s'), ex('mountainClimber', 4, '30s', '45s'), ex('burpee', 3, '8', '60s')],
+      [ex('dbThruster', 4, '15', '60s'), ex('tuckJump', 3, '8', '60s'), ex('dbRenegadeRow', 3, '8 each', '60s'), ex('skaterHop', 4, '40s', '45s'), ex('burpee', 4, '10', '60s')],
+    ],
+  },
+  gym: {
+    1: [
+      [ex('chestPressMachine', 3, '10-12', '75s'), ex('dbShoulderPress', 3, '10', '75s'), ex('dbLateralRaise', 3, '12-15', '60s'), ex('cableTricepPushdown', 3, '12-15', '60s'), ex('plank', 3, '30s', '60s')],
+      [ex('bbBenchPress', 4, '6-8', '150s'), ex('dbShoulderPress', 3, '8-10', '90s'), ex('dbBenchPress', 3, '10-12', '90s'), ex('dbLateralRaise', 3, '15', '45s'), ex('cableTricepPushdown', 3, '12', '60s')],
+      [ex('bbBenchPress', 5, '5', '180s'), ex('bbOverheadPress', 4, '5-6', '150s'), ex('dbBenchPress', 3, '10', '90s'), ex('dbLateralRaise', 4, '15', '45s'), ex('dbTricepExtension', 3, '10-12', '60s')],
+    ],
+    2: [
+      [ex('latPulldown', 3, '10-12', '75s'), ex('seatedCableRow', 3, '10-12', '75s'), ex('cableFacePull', 3, '15', '45s'), ex('dbBicepCurl', 3, '12', '60s'), ex('deadHang', 3, '20-30s', '60s')],
+      [ex('negativePullUp', 3, '5', '90s'), ex('bbRow', 4, '8', '120s'), ex('latPulldown', 3, '10', '75s'), ex('cableFacePull', 3, '15', '45s'), ex('dbHammerCurl', 3, '10', '60s')],
+      [ex('pullUp', 4, '6-8', '120s'), ex('bbRow', 4, '6-8', '120s'), ex('seatedCableRow', 3, '10', '75s'), ex('cableFacePull', 3, '15', '45s'), ex('dbBicepCurl', 3, '10', '60s')],
+    ],
+    3: [
+      [ex('legPress', 3, '12', '90s'), ex('dbGobletSquat', 3, '12', '75s'), ex('legCurl', 3, '12', '60s'), ex('legExtension', 3, '12', '60s'), ex('calfRaise', 3, '20', '45s')],
+      [ex('bbBackSquat', 4, '6-8', '150s'), ex('bbRomanianDeadlift', 3, '8-10', '120s'), ex('legPress', 3, '10-12', '90s'), ex('legCurl', 3, '12', '60s'), ex('singleLegCalfRaise', 3, '12 each', '45s')],
+      [ex('bbBackSquat', 5, '5', '180s'), ex('bbDeadlift', 3, '5', '180s'), ex('bbHipThrust', 4, '8-10', '90s'), ex('bulgarianSplitSquat', 3, '8 each', '90s'), ex('legExtension', 3, '12-15', '60s')],
+    ],
+    4: [
+      [ex('plank', 3, '30s', '60s'), ex('cableWoodchop', 3, '10 each', '45s'), ex('deadBug', 3, '10 each', '45s'), ex('reverseCrunch', 3, '12', '45s'), ex('catCow', 1, '10', '0s')],
+      [ex('hangingKneeRaise', 3, '10-12', '60s'), ex('cableWoodchop', 3, '12 each', '45s'), ex('hollowHold', 3, '30s', '45s'), ex('sidePlank', 2, '30s each', '45s'), ex('russianTwist', 3, '20 total', '45s')],
+      [ex('hangingKneeRaise', 4, '12-15', '60s'), ex('cableWoodchop', 4, '12 each', '45s'), ex('vUp', 3, '12', '60s'), ex('hollowHold', 3, '45s', '45s'), ex('plankWalkup', 3, '10', '60s')],
+    ],
+    5: [
+      [ex('kbSwing', 3, '15', '60s'), ex('jumpRopeBasic', 3, '60s', '30s'), ex('dbThruster', 3, '10', '60s'), ex('mountainClimber', 3, '30s', '45s'), ex('jumpingJack', 3, '30s', '30s')],
+      [ex('kbSwing', 4, '15', '60s'), ex('jumpRopeBasic', 4, '60s', '30s'), ex('dbThruster', 3, '12', '60s'), ex('burpee', 3, '8', '60s'), ex('skaterHop', 3, '30s', '45s')],
+      [ex('kbSwing', 5, '15', '60s'), ex('doubleUnders', 4, '30s', '60s'), ex('dbThruster', 4, '12', '60s'), ex('burpee', 4, '10', '60s'), ex('tuckJump', 3, '8', '60s')],
+    ],
+  },
+};
+
+export const TRAINING_MODE_LABELS: Record<TrainingMode, string> = {
+  home: 'Home · bodyweight',
+  dumbbells: 'Home · dumbbells',
+  gym: 'Full gym',
+};
+
+function tiersFor(slot: number, mode: TrainingMode): WorkoutExercise[][] {
+  const template = SPLIT[slot];
+  if (mode === 'home' || template.isRestDay) return template.tiers;
+  return MODE_TIERS[mode][slot] ?? template.tiers;
+}
+
 const TIER_PHASES = ['Phases 1–2', 'Phases 3–4', 'Phases 5–6'];
 
 export interface ExerciseUsage {
@@ -317,20 +392,22 @@ export interface ExerciseUsage {
   prescription: string;
 }
 
-/** Where an exercise appears in the weekly split, and with what sets/reps, per phase tier. */
+/** Where an exercise appears in the weekly split (every training mode), with sets/reps per phase tier. */
 export function getExerciseUsage(exerciseKey: string): ExerciseUsage[] {
   const usage: ExerciseUsage[] = [];
-  for (const template of Object.values(SPLIT)) {
-    template.tiers.forEach((tier, tierIndex) => {
-      for (const slot of tier) {
-        if (slot.exerciseKey !== exerciseKey) continue;
-        usage.push({
-          dayLabel: template.label,
-          phases: TIER_PHASES[tierIndex],
-          prescription: `${slot.sets} × ${slot.reps ?? `${slot.timeSeconds}s`}`,
-        });
-      }
-    });
+  for (const mode of ['home', 'dumbbells', 'gym'] as TrainingMode[]) {
+    for (const template of Object.values(SPLIT)) {
+      tiersFor(template.slot, mode).forEach((tier, tierIndex) => {
+        for (const slot of tier) {
+          if (slot.exerciseKey !== exerciseKey) continue;
+          usage.push({
+            dayLabel: mode === 'home' ? template.label : `${template.label} (${TRAINING_MODE_LABELS[mode]})`,
+            phases: TIER_PHASES[tierIndex],
+            prescription: `${slot.sets} × ${slot.reps ?? `${slot.timeSeconds}s`}`,
+          });
+        }
+      });
+    }
   }
   return usage;
 }
@@ -338,9 +415,9 @@ export function getExerciseUsage(exerciseKey: string): ExerciseUsage[] {
 /**
  * Resolves everything about a given day of the 365-day program: which
  * split it falls on, which phase (and therefore which exercise tier)
- * applies, and the fully-built workout for that day.
+ * applies, and the fully-built workout for that day in the chosen mode.
  */
-export function resolveWorkout(dayNumber: number, programStartDate: Date): ResolvedWorkout {
+export function resolveWorkout(dayNumber: number, programStartDate: Date, mode: TrainingMode = 'home'): ResolvedWorkout {
   const day = Math.min(Math.max(dayNumber, 1), PROGRAM_LENGTH_DAYS);
   const weekNumber = Math.ceil(day / 7);
   const slot = ((day - 1) % 7) + 1;
@@ -364,7 +441,7 @@ export function resolveWorkout(dayNumber: number, programStartDate: Date): Resol
     kcalEstimate: template.kcalEstimate,
     warmup: template.warmup,
     cooldown: template.cooldown,
-    exercises: template.isRestDay ? [] : template.tiers[tierIndex],
+    exercises: template.isRestDay ? [] : tiersFor(slot, mode)[tierIndex],
     checklist: template.checklist,
     restNote: template.restNote,
     motivation: quoteForDay(day),

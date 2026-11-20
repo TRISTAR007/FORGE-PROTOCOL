@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -12,6 +13,7 @@ import { OrDivider } from './or-divider';
 import { safeNextPath } from '@/lib/utils';
 
 export function LoginForm() {
+  const t = useTranslations('auth');
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeNextPath(searchParams.get('next'));
@@ -28,7 +30,7 @@ export function LoginForm() {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      setError(error.message === 'Invalid login credentials' ? 'Incorrect email or password.' : error.message);
+      setError(error.message === 'Invalid login credentials' ? t('incorrect') : error.message);
       setLoading(false);
       return;
     }
@@ -38,8 +40,8 @@ export function LoginForm() {
 
   return (
     <div className="animate-fadeIn">
-      <h1 className="font-display text-3xl tracking-wide">Welcome back</h1>
-      <p className="mt-2 text-sm text-ink-muted">Sign in to pick up right where you left off.</p>
+      <h1 className="font-display text-3xl tracking-wide">{t('welcomeBack')}</h1>
+      <p className="mt-2 text-sm text-ink-muted">{t('signInSubtitle')}</p>
 
       <div className="mt-8">
         <GoogleButton next={next} />
@@ -49,7 +51,7 @@ export function LoginForm() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Input
-          label="Email"
+          label={t('email')}
           type="email"
           autoComplete="email"
           required
@@ -58,7 +60,7 @@ export function LoginForm() {
           placeholder="you@example.com"
         />
         <Input
-          label="Password"
+          label={t('password')}
           type="password"
           autoComplete="current-password"
           required
@@ -68,14 +70,14 @@ export function LoginForm() {
         />
         {error ? <FormError message={error} /> : null}
         <Button type="submit" size="lg" loading={loading} className="mt-1">
-          Sign In
+          {t('signIn')}
         </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-ink-muted">
-        Don&apos;t have an account?{' '}
+        {t('noAccount')}{' '}
         <Link href="/signup" className="font-semibold text-forge hover:text-forge-hover">
-          Create one
+          {t('createOne')}
         </Link>
       </p>
     </div>

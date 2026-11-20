@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -41,13 +42,14 @@ function BulletList({ items }: { items: string[] }) {
 }
 
 export default function ResourcesPage() {
+  const tp = useTranslations('pages');
   const [tab, setTab] = useState(RESOURCE_TABS[0].id);
 
   return (
     <div className="animate-fadeIn space-y-5">
       <div>
-        <h1 className="font-display text-3xl tracking-wide">Resources</h1>
-        <p className="mt-1 text-ink-muted">Everything outside the workout that makes the workout work.</p>
+        <h1 className="font-display text-3xl tracking-wide">{tp('resourcesTitle')}</h1>
+        <p className="mt-1 text-ink-muted">{tp('resourcesSubtitle')}</p>
       </div>
 
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar">

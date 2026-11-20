@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { MeasurementsCard } from '@/components/progress/measurements-card';
 import { StrengthTestCard } from '@/components/progress/strength-test-card';
 import { HabitCalendar } from '@/components/progress/habit-calendar';
@@ -13,14 +14,15 @@ import { Flame, ListChecks, Zap } from 'lucide-react';
 import { useTrainingStats } from '@/hooks/use-training-stats';
 
 export default function ProgressPage() {
+  const tp = useTranslations('pages');
   const { streak, longestStreak, workoutsCompleted } = useTrainingStats();
 
   return (
     <div className="animate-fadeIn space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl tracking-wide">Progress</h1>
-          <p className="mt-1 text-ink-muted">Track the numbers that prove the work is working.</p>
+          <h1 className="font-display text-3xl tracking-wide">{tp('progressTitle')}</h1>
+          <p className="mt-1 text-ink-muted">{tp('progressSubtitle')}</p>
         </div>
         <ShareProgressButton />
       </div>

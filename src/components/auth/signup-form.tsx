@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -11,6 +12,7 @@ import { OrDivider } from './or-divider';
 import { CheckCircle2 } from 'lucide-react';
 
 export function SignupForm() {
+  const t = useTranslations('auth');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,7 +26,7 @@ export function SignupForm() {
     setError(null);
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
+      setError(t('passwordTooShort'));
       return;
     }
 
@@ -55,15 +57,15 @@ export function SignupForm() {
           <CheckCircle2 size={24} />
         </div>
         <h1 className="font-display text-2xl tracking-wide">
-          {needsConfirmation ? 'Check your inbox' : "You're in"}
+          {needsConfirmation ? t('checkEmail') : t('accountReady')}
         </h1>
         <p className="mt-2 text-sm text-ink-muted">
           {needsConfirmation
-            ? `We sent a confirmation link to ${email}. Click it to activate your account, then sign in.`
-            : 'Your account has been created.'}
+            ? t('checkEmailBody', { email })
+            : t('accountReadyBody')}
         </p>
         <Link href="/login" className="mt-6 inline-block">
-          <Button size="lg">Go to Sign In</Button>
+          <Button size="lg">{t('signInLink')}</Button>
         </Link>
       </div>
     );
@@ -71,8 +73,8 @@ export function SignupForm() {
 
   return (
     <div className="animate-fadeIn">
-      <h1 className="font-display text-3xl tracking-wide">Start your protocol</h1>
-      <p className="mt-2 text-sm text-ink-muted">Day 1 of 365 begins the moment you sign up.</p>
+      <h1 className="font-display text-3xl tracking-wide">{t('createAccount')}</h1>
+      <p className="mt-2 text-sm text-ink-muted">{t('signUpSubtitle')}</p>
 
       <div className="mt-8">
         <GoogleButton />
@@ -82,7 +84,7 @@ export function SignupForm() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Input
-          label="Full name"
+          label={t('fullName')}
           type="text"
           autoComplete="name"
           required
@@ -91,7 +93,7 @@ export function SignupForm() {
           placeholder="Your name"
         />
         <Input
-          label="Email"
+          label={t('email')}
           type="email"
           autoComplete="email"
           required
@@ -100,7 +102,7 @@ export function SignupForm() {
           placeholder="you@example.com"
         />
         <Input
-          label="Password"
+          label={t('password')}
           type="password"
           autoComplete="new-password"
           required
@@ -110,14 +112,14 @@ export function SignupForm() {
         />
         {error ? <FormError message={error} /> : null}
         <Button type="submit" size="lg" loading={loading} className="mt-1">
-          Create Account
+          {t('signUp')}
         </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-ink-muted">
-        Already have an account?{' '}
+        {t('haveAccount')}{' '}
         <Link href="/login" className="font-semibold text-forge hover:text-forge-hover">
-          Sign in
+          {t('signInLink')}
         </Link>
       </p>
     </div>

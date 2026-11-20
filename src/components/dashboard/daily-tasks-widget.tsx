@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { Check } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ProgressBar } from '@/components/ui/progress-bar';
@@ -8,6 +10,7 @@ import { useProgress } from '@/context/progress-context';
 import { DAILY_TASKS } from '@/lib/program/tasks';
 
 export function DailyTasksWidget() {
+  const t = useTranslations('dashboard');
   const { progress, toggleDailyTask } = useProgress();
   const key = todayKey();
   const done = progress.dailyTasks[key] ?? [];
@@ -15,7 +18,7 @@ export function DailyTasksWidget() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Daily Non-Negotiables</CardTitle>
+        <CardTitle>{t('dailyTitle')}</CardTitle>
         <span className="font-mono text-xs text-ink-faint">
           {done.length}/{DAILY_TASKS.length}
         </span>

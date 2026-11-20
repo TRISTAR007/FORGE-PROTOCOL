@@ -1,9 +1,11 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Dumbbell, Flame, Trophy, Scale } from 'lucide-react';
 import { PhaseHero } from '@/components/dashboard/phase-hero';
 import { PhaseTimeline } from '@/components/dashboard/phase-timeline';
 import { MissedDaysBanner } from '@/components/dashboard/missed-days-banner';
+import { QuickPicks } from '@/components/dashboard/quick-picks';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { WeekStrip } from '@/components/dashboard/week-strip';
 import { WaterTracker } from '@/components/dashboard/water-tracker';
@@ -15,6 +17,7 @@ import { useTrainingStats } from '@/hooks/use-training-stats';
 import { toDisplayWeight, weightUnit } from '@/lib/units';
 
 export default function DashboardPage() {
+  const t = useTranslations('dashboard');
   const { progress, settings } = useProgress();
   const { today, totalDays } = useProgram();
   const { streak, workoutsCompleted } = useTrainingStats();
@@ -27,18 +30,19 @@ export default function DashboardPage() {
       <PhaseHero workout={today} totalDays={totalDays} streak={streak} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard icon={Dumbbell} label="Workouts" value={String(workoutsCompleted)} sub="completed" />
-        <StatCard icon={Flame} label="Streak" value={String(streak)} sub="days" />
-        <StatCard icon={Trophy} label="Push-ups" value={pushups ? String(pushups) : '—'} sub="best set" />
+        <StatCard icon={Dumbbell} label={t('statWorkouts')} value={String(workoutsCompleted)} sub={t('statCompleted')} />
+        <StatCard icon={Flame} label={t('statStreak')} value={String(streak)} sub={t('statDays')} />
+        <StatCard icon={Trophy} label={t('statPushups')} value={pushups ? String(pushups) : '—'} sub={t('statBestSet')} />
         <StatCard
           icon={Scale}
-          label="Weight"
+          label={t('statWeight')}
           value={weight ? String(toDisplayWeight(weight, settings.units)) : '—'}
           sub={weightUnit(settings.units)}
         />
       </div>
 
       <WeekStrip />
+      <QuickPicks seed={today.dayNumber} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <DailyTasksWidget />

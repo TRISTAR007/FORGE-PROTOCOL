@@ -201,6 +201,228 @@ revoke all on function public.delete_own_account() from public, anon;
 grant execute on function public.delete_own_account() to authenticated;
 
 -- ---------------------------------------------------------------------
+-- 7. Community (profiles, channels, chat, reports, blocks)
+-- ---------------------------------------------------------------------
+-- Public community identity is kept separate from the private `profiles`
+-- table: only username, display name, avatar, country, bio, favorite
+-- show, XP and level are visible to other signed-in users.
+
+create table if not exists public.community_profiles (
+  id                uuid primary key references auth.users (id) on delete cascade,
+  username          text not null check (username ~ '^[A-Za-z0-9_]{3,20}$'),
+  display_name      text check (char_length(display_name) <= 40),
+  avatar_coach      text not null default 'kaito'
+                    check (avatar_coach in ('kaito','ren','mika','ryu','aiko','zara','leo','nova')),
+  country           text check (country ~ '^[A-Z]{2}$'),
+  bio               text check (char_length(bio) <= 160),
+  favorite_show     text check (char_length(favorite_show) <= 60),
+  xp                integer not null default 0 check (xp >= 0),
+  level             integer not null default 1 check (level between 1 and 200),
+  rules_accepted_at timestamptz not null,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+create unique index if not exists community_profiles_username_key on public.community_profiles (lower(username));
+create index if not exists community_profiles_xp_idx on public.community_profiles (xp desc);
+
+-- Moderators and bans are managed by you in the Supabase dashboard
+-- (Table Editor): add a user id to grant moderation / to ban someone.
+create table if not exists public.community_moderators (
+  user_id uuid primary key references auth.users (id) on delete cascade
+);
+create table if not exists public.community_bans (
+  user_id    uuid primary key references auth.users (id) on delete cascade,
+  reason     text,
+  created_at timestamptz not null default now()
+);
+
+create or replace function public.is_community_moderator(uid uuid)
+returns boolean
+language sql stable security definer set search_path = public
+as $$ select exists (select 1 from public.community_moderators where user_id = uid) $$;
+
+create or replace function public.is_community_banned(uid uuid)
+returns boolean
+language sql stable security definer set search_path = public
+as $$ select exists (select 1 from public.community_bans where user_id = uid) $$;
+
+alter table public.community_profiles enable row level security;
+alter table public.community_moderators enable row level security;
+alter table public.community_bans enable row level security;
+
+drop policy if exists "Community profiles are visible to members" on public.community_profiles;
+create policy "Community profiles are visible to members"
+  on public.community_profiles for select to authenticated using (true);
+
+drop policy if exists "Community profile is creatable by owner" on public.community_profiles;
+create policy "Community profile is creatable by owner"
+  on public.community_profiles for insert to authenticated with check (auth.uid() = id);
+
+drop policy if exists "Community profile is editable by owner" on public.community_profiles;
+create policy "Community profile is editable by owner"
+  on public.community_profiles for update to authenticated using (auth.uid() = id) with check (auth.uid() = id);
+
+drop policy if exists "Moderators can see their own role" on public.community_moderators;
+create policy "Moderators can see their own role"
+  on public.community_moderators for select to authenticated using (auth.uid() = user_id);
+
+-- Light leaderboard anti-cheat: XP synced from the app can only grow a
+-- little per update, and timestamps can't be forged.
+create or replace function public.guard_community_profile()
+returns trigger
+language plpgsql
+as $$
+begin
+  if tg_op = 'INSERT' then
+    new.xp := least(new.xp, 200000);
+    new.created_at := now();
+  else
+    if new.xp > old.xp + 5000 then new.xp := old.xp + 5000; end if;
+    new.created_at := old.created_at;
+    new.rules_accepted_at := old.rules_accepted_at;
+  end if;
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+drop trigger if exists guard_community_profile on public.community_profiles;
+create trigger guard_community_profile
+  before insert or update on public.community_profiles
+  for each row execute procedure public.guard_community_profile();
+
+create table if not exists public.channels (
+  id          uuid primary key default gen_random_uuid(),
+  slug        text not null unique,
+  name        text not null,
+  description text,
+  sort        integer not null default 0,
+  locked      boolean not null default false
+);
+
+alter table public.channels enable row level security;
+drop policy if exists "Channels are visible to members" on public.channels;
+create policy "Channels are visible to members"
+  on public.channels for select to authenticated using (true);
+
+insert into public.channels (slug, name, description, sort) values
+  ('general',       'General',        'Say hi and hang out with the dojo.',                1),
+  ('victories',     'Victories',      'Finished workouts, new records and wins.',          2),
+  ('training-help', 'Training Help',  'Form checks, programming questions and advice.',    3),
+  ('beginners',     'Beginners',      'New here? No question is too basic.',               4),
+  ('gym-lifting',   'Gym & Lifting',  'Barbells, machines and the equipment track.',       5),
+  ('nutrition',     'Nutrition',      'Budget meals, protein ideas and recipes.',          6),
+  ('anime-talk',    'Anime Talk',     'What you are watching, reading and loving.',        7),
+  ('international', 'International',  'Chat in any language — the dojo is worldwide.',     8)
+on conflict (slug) do nothing;
+
+create table if not exists public.messages (
+  id         bigint generated always as identity primary key,
+  channel_id uuid not null references public.channels (id) on delete cascade,
+  user_id    uuid not null references public.community_profiles (id) on delete cascade,
+  body       text not null default '' check (char_length(body) <= 1000),
+  kind       text not null default 'text' check (kind in ('text', 'workout')),
+  meta       jsonb,
+  reply_to   bigint references public.messages (id) on delete set null,
+  created_at timestamptz not null default now(),
+  edited_at  timestamptz,
+  deleted_at timestamptz
+);
+
+create index if not exists messages_channel_id_idx on public.messages (channel_id, id desc);
+create index if not exists messages_user_recent_idx on public.messages (user_id, created_at desc);
+
+alter table public.messages enable row level security;
+
+drop policy if exists "Messages are visible to members" on public.messages;
+create policy "Messages are visible to members"
+  on public.messages for select to authenticated using (true);
+
+drop policy if exists "Members can post as themselves" on public.messages;
+create policy "Members can post as themselves"
+  on public.messages for insert to authenticated
+  with check (
+    auth.uid() = user_id
+    and not public.is_community_banned(auth.uid())
+    and exists (select 1 from public.channels c where c.id = channel_id and not c.locked)
+  );
+
+drop policy if exists "Authors and moderators can edit messages" on public.messages;
+create policy "Authors and moderators can edit messages"
+  on public.messages for update to authenticated
+  using (auth.uid() = user_id or public.is_community_moderator(auth.uid()))
+  with check (auth.uid() = user_id or public.is_community_moderator(auth.uid()));
+
+-- Server-side rate limit + validation (the app also filters, but this is the real guard).
+create or replace function public.guard_message_insert()
+returns trigger
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if (select count(*) from public.messages
+      where user_id = new.user_id and created_at > now() - interval '10 seconds') >= 5 then
+    raise exception 'rate_limit: too many messages, slow down';
+  end if;
+  if new.kind = 'text' and char_length(btrim(new.body)) = 0 then
+    raise exception 'Message is empty';
+  end if;
+  new.created_at := now();
+  new.edited_at := null;
+  new.deleted_at := null;
+  return new;
+end;
+$$;
+
+drop trigger if exists guard_message_insert on public.messages;
+create trigger guard_message_insert
+  before insert on public.messages
+  for each row execute procedure public.guard_message_insert();
+
+create table if not exists public.message_reports (
+  id          bigint generated always as identity primary key,
+  message_id  bigint not null references public.messages (id) on delete cascade,
+  reporter_id uuid not null references auth.users (id) on delete cascade,
+  reason      text not null check (reason in ('harassment','hate','inappropriate','personal','spam','other')),
+  created_at  timestamptz not null default now(),
+  unique (message_id, reporter_id)
+);
+
+alter table public.message_reports enable row level security;
+drop policy if exists "Members can report messages" on public.message_reports;
+create policy "Members can report messages"
+  on public.message_reports for insert to authenticated with check (auth.uid() = reporter_id);
+drop policy if exists "Moderators can read reports" on public.message_reports;
+create policy "Moderators can read reports"
+  on public.message_reports for select to authenticated using (public.is_community_moderator(auth.uid()));
+
+create table if not exists public.user_blocks (
+  blocker_id uuid not null references auth.users (id) on delete cascade,
+  blocked_id uuid not null references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (blocker_id, blocked_id),
+  check (blocker_id <> blocked_id)
+);
+
+alter table public.user_blocks enable row level security;
+drop policy if exists "Members manage their own blocks" on public.user_blocks;
+create policy "Members manage their own blocks"
+  on public.user_blocks for all to authenticated
+  using (auth.uid() = blocker_id) with check (auth.uid() = blocker_id);
+
+-- Live chat: stream new / edited messages to connected clients.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages'
+  ) then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
 -- Done. Every new signup gets its own profile + progress row, and RLS
 -- guarantees no user can ever read or write another user's data.
 -- ---------------------------------------------------------------------

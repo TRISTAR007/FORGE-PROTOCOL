@@ -1,4 +1,5 @@
-import type { Exercise } from '@/lib/types';
+import type { Equipment, Exercise } from '@/lib/types';
+import { EXTENDED_EXERCISES } from './exercises-extended';
 
 const IMG = '/images/exercises/';
 
@@ -13,7 +14,7 @@ const IMG = '/images/exercises/';
  * were introduced by the GLOWUP split and use the same placeholder
  * pattern the original library already had for `scapularPushup`.
  */
-export const EXERCISES: Record<string, Exercise> = {
+const BASE_EXERCISES: Record<string, Exercise> = {
   // ---- Push -----------------------------------------------------------
   kneePushup: {
     key: 'kneePushup',
@@ -622,9 +623,30 @@ export const EXERCISES: Record<string, Exercise> = {
   },
 };
 
+/** The full library: the original bodyweight set plus the extended + equipment wing. */
+export const EXERCISES: Record<string, Exercise> = { ...BASE_EXERCISES, ...EXTENDED_EXERCISES };
+
 export function getExercise(key: string): Exercise | undefined {
   return EXERCISES[key];
 }
+
+/** Equipment an exercise needs (bodyweight exercises report ['none']). */
+export function exerciseEquipment(ex: Exercise): Equipment[] {
+  return ex.equipment && ex.equipment.length > 0 ? ex.equipment : ['none'];
+}
+
+export const EQUIPMENT_LABELS: Record<Equipment, string> = {
+  none: 'No equipment',
+  dumbbell: 'Dumbbells',
+  kettlebell: 'Kettlebell',
+  band: 'Resistance band',
+  'pullup-bar': 'Pull-up bar',
+  barbell: 'Barbell',
+  bench: 'Bench',
+  'jump-rope': 'Jump rope',
+  cable: 'Cable machine',
+  machine: 'Gym machine',
+};
 
 export function exerciseName(key: string): string {
   return EXERCISES[key]?.name ?? key;

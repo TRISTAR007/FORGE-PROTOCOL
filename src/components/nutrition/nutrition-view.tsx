@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import Link from 'next/link';
 import { Sparkles, Check, Shuffle, RotateCcw, Minus, Calculator, ChevronDown } from 'lucide-react';
@@ -17,12 +18,8 @@ import type { NutritionProfile } from '@/lib/types';
 import {
   DAILY_TARGETS,
   GOLDEN_RULE,
-  BUDGET_FOODS,
-  MEAL_PLAN,
-  SHOPPING_LIST,
-  SHOPPING_TOTAL,
-  PROTEIN_FOODS,
-  mealOptions,
+  REGION_PLANS,
+  regionMealOptions,
 } from '@/lib/program/nutrition';
 
 const DEFAULT_PROTEIN_TARGET = 140;
@@ -201,7 +198,8 @@ function TargetsCard() {
 }
 
 function ProteinTracker() {
-  const { progress, addProtein } = useProgress();
+  const { progress, settings, addProtein } = useProgress();
+  const plan = REGION_PLANS[settings.region];
   const key = todayKey();
   const target = computeTargets(progress.measurements.weight, progress.nutritionProfile)?.protein ?? DEFAULT_PROTEIN_TARGET;
   const today = progress.proteinLog[key] ?? 0;
@@ -232,7 +230,7 @@ function ProteinTracker() {
           <div className="w-full min-w-0 flex-1">
             <p className="mb-2 text-xs text-ink-faint">Tap what you ate to add it:</p>
             <div className="flex flex-wrap gap-1.5">
-              {PROTEIN_FOODS.map((f) => (
+              {plan.protein.map((f) => (
                 <button
                   key={f.label}
                   onClick={() => addProtein(key, f.grams)}
@@ -273,7 +271,8 @@ function ProteinTracker() {
 }
 
 function MealPlanCard() {
-  const { progress, setMealSwap } = useProgress();
+  const { progress, settings, setMealSwap } = useProgress();
+  const plan = REGION_PLANS[settings.region];
 
   return (
     <Card>
@@ -282,8 +281,8 @@ function MealPlanCard() {
         <span className="font-mono text-xs text-ink-faint">Tap swap to change a meal</span>
       </CardHeader>
       <CardContent className="space-y-3">
-        {MEAL_PLAN.map((meal) => {
-          const options = mealOptions(meal);
+        {plan.meals.map((meal) => {
+          const options = regionMealOptions(meal);
           const index = Math.min(progress.mealSwaps[meal.title] ?? 0, options.length - 1);
           return (
             <div key={meal.title} className="flex gap-4 rounded-sm border border-line bg-bg p-3">
@@ -317,7 +316,9 @@ function MealPlanCard() {
 }
 
 function ShoppingListCard() {
-  const { progress, toggleShoppingItem, resetShoppingList } = useProgress();
+  const { progress, settings, toggleShoppingItem, resetShoppingList } = useProgress();
+  const plan = REGION_PLANS[settings.region];
+  const SHOPPING_LIST = plan.shopping;
   const { toast } = useToast();
   const checkedCount = SHOPPING_LIST.filter((row) => progress.shoppingListChecked[row.item]).length;
 
@@ -329,7 +330,7 @@ function ShoppingListCard() {
           <span className="font-mono text-xs text-ink-faint">
             {checkedCount}/{SHOPPING_LIST.length}
           </span>
-          <Badge tone="brass">{SHOPPING_TOTAL}</Badge>
+          {plan.total ? <Badge tone="brass">{plan.total}</Badge> : null}
         </div>
       </CardHeader>
       <CardContent>
@@ -385,11 +386,13 @@ function ShoppingListCard() {
 }
 
 export function NutritionView() {
+  const { settings } = useProgress();
+  const tp = useTranslations('pages');
   return (
     <div className="animate-fadeIn space-y-6">
       <div>
-        <h1 className="font-display text-3xl tracking-wide">Nutrition</h1>
-        <p className="mt-1 text-ink-muted">Budget-friendly, protein-forward meals built for a caloric surplus.</p>
+        <h1 className="font-display text-3xl tracking-wide">{tp('nutritionTitle')}</h1>
+        <p className="mt-1 text-ink-muted">{tp('nutritionSubtitle')}</p>
       </div>
 
       <Card className="border-forge/30 bg-forge-dim/40 p-5">
@@ -412,7 +415,7 @@ export function NutritionView() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {BUDGET_FOODS.map((food) => (
+            {REGION_PLANS[settings.region].foods.map((food) => (
               <div key={food} className="rounded-sm border border-line bg-bg px-3 py-2 text-sm text-ink-muted">
                 {food}
               </div>

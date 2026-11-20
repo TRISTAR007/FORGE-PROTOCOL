@@ -18,6 +18,7 @@ import {
   type NutritionProfile,
   type ProgressData,
   type ProgressPhoto,
+  type RoutineLog,
   type SessionLog,
   type StrengthTests,
   type UserSettings,
@@ -41,6 +42,10 @@ interface ProgressContextValue {
   resetShoppingList: () => void;
   addProgressPhoto: (photo: ProgressPhoto) => void;
   removeProgressPhoto: (id: string) => void;
+  logRoutine: (log: RoutineLog) => void;
+  startArc: (arcId: string) => void;
+  toggleArcDay: (arcId: string, arcDay: number) => void;
+  leaveArc: (arcId: string) => void;
   toggleChecklistItem: (dayNumber: number, index: number) => void;
   toggleExerciseCheck: (dayNumber: number, index: number) => void;
   completeAllExercises: (dayNumber: number, count: number) => void;
@@ -471,6 +476,47 @@ export function ProgressProvider({
     [mutate]
   );
 
+  const logRoutine = useCallback(
+    (log: RoutineLog) => {
+      // Capped so the synced document stays small; XP only needs the count.
+      mutate((prev) => ({ ...prev, routineLogs: [...prev.routineLogs, log].slice(-300) }));
+    },
+    [mutate]
+  );
+
+  const startArc = useCallback(
+    (arcId: string) => {
+      mutate((prev) => ({ ...prev, arcs: { ...prev.arcs, [arcId]: { startedOn: todayKey(), doneDays: [] } } }));
+    },
+    [mutate]
+  );
+
+  const toggleArcDay = useCallback(
+    (arcId: string, arcDay: number) => {
+      mutate((prev) => {
+        const arc = prev.arcs[arcId];
+        if (!arc) return prev;
+        const done = arc.doneDays.includes(arcDay)
+          ? arc.doneDays.filter((d) => d !== arcDay)
+          : [...arc.doneDays, arcDay].sort((a, b) => a - b);
+        return { ...prev, arcs: { ...prev.arcs, [arcId]: { ...arc, doneDays: done } } };
+      });
+    },
+    [mutate]
+  );
+
+  const leaveArc = useCallback(
+    (arcId: string) => {
+      mutate((prev) => {
+        if (!prev.arcs[arcId]) return prev;
+        const arcs = { ...prev.arcs };
+        delete arcs[arcId];
+        return { ...prev, arcs };
+      });
+    },
+    [mutate]
+  );
+
   const settings = useMemo(() => getSettings(progress), [progress]);
 
   const value: ProgressContextValue = {
@@ -486,6 +532,10 @@ export function ProgressProvider({
     resetShoppingList,
     addProgressPhoto,
     removeProgressPhoto,
+    logRoutine,
+    startArc,
+    toggleArcDay,
+    leaveArc,
     toggleChecklistItem,
     toggleExerciseCheck,
     completeAllExercises,

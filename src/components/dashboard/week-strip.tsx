@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import Link from 'next/link';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -8,6 +10,7 @@ import { useTrainingStats } from '@/hooks/use-training-stats';
 import { splitLabel } from '@/lib/program/program';
 
 export function WeekStrip() {
+  const t = useTranslations('dashboard');
   const { trainedDays } = useTrainingStats();
   const { todayDayNumber, getWorkout } = useProgram();
 
@@ -16,7 +19,7 @@ export function WeekStrip() {
 
   return (
     <div>
-      <h2 className="mb-3 font-display text-lg tracking-wide">This Week</h2>
+      <h2 className="mb-3 font-display text-lg tracking-wide">{t('thisWeek')}</h2>
       <div className="grid grid-cols-7 gap-2">
         {days.map((dayNumber) => {
           const workout = getWorkout(dayNumber);

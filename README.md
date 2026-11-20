@@ -1,89 +1,88 @@
-# FORGE Protocol
+# Level Up Dojo
 
-A 365-day home bodyweight training, nutrition, and habit-tracking app — built by merging two prior prototypes (**Toji Protocol** and **GLOWUP APP**) into one production-quality product with real authentication and per-user cloud data.
+**Free anime-style workouts, coaches and community — for anime fans and everyone else.**
 
-- **Stack:** Next.js 16 (App Router) · TypeScript · Tailwind CSS · Supabase (Auth + Postgres + Storage)
+A 365-day home and gym training app guided by an original cast of anime-style coaches, with voice coaching, XP and belts, 30-day Training Arcs, nutrition for six world regions, a live community, 12 languages, and Android / iOS apps.
+
+- **Stack:** Next.js 16 (App Router) · TypeScript · Tailwind CSS · Supabase (Auth, Postgres, Storage, Realtime) · next-intl · Capacitor 8
 - **Auth:** Email/password + "Continue with Google", via Supabase Auth
-- **Data:** Every user's progress lives in its own row, protected by Postgres Row Level Security — nobody can ever read or write another user's data, even if the frontend were compromised.
+- **Data:** Every user's data is protected by Postgres Row Level Security — nobody can read or write another user's private data, even if the frontend were compromised.
 
 ---
 
 ## What's inside
 
-- A real 365-day program: a 7-day rotating split (Push / Pull / Legs / Core / HIIT / Recovery / Rest) that genuinely progresses through 6 macro phases (beginner → intermediate → advanced exercise tiers), instead of repeating one week's data 52 times.
-- A 33-exercise library with photos, muscles worked, and step-by-step instructions — filter by category, level or muscle, save favorites, and see where each exercise appears in the program.
-- A full-screen **guided workout session player**: countdown ring, sound / voice / vibration cues, rep logging per set, previous / +15s / pause controls, keyboard shortcuts, resume-after-interruption, and a summary screen with personal records and "ready to progress" tips.
-- A Nigerian-market nutrition plan: calorie and macro targets calculated from your own weight, height, age and activity, a quick-tap protein tracker, swappable meals, and a weekly shopping list with estimated costs.
-- Progress tracking: a 365-day heatmap, trend charts for every measurement and strength test, badges, personal bests, private progress photos with a before/after slider, and a shareable progress card.
-- Daily habits: hydration (with an adjustable goal), daily non-negotiables, and a habit calendar that merges in-app workouts with training you mark by hand.
-- Missed-day recovery: after a gap, the dashboard offers to shift your schedule so you resume exactly where you left off.
-- Settings: metric / imperial units, a daily calendar reminder (`.ics`), editable program start date, JSON / CSV data export, and self-service account deletion.
-- Installable app (PWA) with offline support.
-- Reference guides: posture correction, mobility routines, recovery/sleep, training science, and a simple skin routine.
-- Responsive design: a sidebar on desktop, a bottom tab bar on mobile.
+**Coaches** — eight original characters (Kaito, Sensei Ren, Mika, Ryu, Aiko, Zara, Leo, Nova) plus Mochi the mascot. Each has a specialty, a personality, their own lines for every moment of a workout, and a voice profile (pitch, pace, gender) for the browser's built-in speech engine. The coach greets you on the dashboard, talks you through guided sessions with animated reactions, and appears on your share cards. *All characters are original; no existing anime IP is used.*
+
+**Training**
+- A 365-day program in three versions — **Home (bodyweight)**, **Home (dumbbells)** and **Full gym** — across six phases that genuinely get harder.
+- 136 exercises (bodyweight, cardio, mobility, dumbbell, kettlebell, band, barbell, pull-up bar, cable and machine) with instructions, muscles and filters.
+- 31 **quick workouts** for any day, each led by a coach, filterable by equipment, length and focus.
+- Six 30-day **Training Arcs** (push-ups, squats, plank, jumping jacks, grip, flexibility) that grow every day.
+- A full-screen guided player: countdown ring, coach portrait + speech bubbles + voice, sound and haptic cues, rep logging, previous / +15s / pause, keyboard shortcuts, resume after interruption, personal records, "ready to progress" tips, confetti, and sharing to the community.
+
+**Progress & motivation** — XP for everything you log, levels and belts (White Belt → Legend), a 365-day heatmap, 26 badges, personal bests, measurement and strength charts, private progress photos with a before/after slider, missed-day recovery, and a shareable progress card.
+
+**Nutrition** — calorie and macro targets from your own stats, a protein tracker, swappable meals and a weekly shopping list, with meal plans for Global, West Africa, South Asia, East & Southeast Asia, Latin America and the Middle East & North Africa.
+
+**Community** — public profiles (username, coach avatar, country, belt), eight live chat channels, replies, workout shares to #victories, a global and per-country leaderboard, reporting, blocking, moderators, bans, a database rate limit, automatic hiding of emails / phone numbers, and a 13+ age gate.
+
+**Everywhere** — 12 languages (English, Spanish, Portuguese, French, German, Japanese, Korean, Chinese, Hindi, Indonesian, Arabic with right-to-left layout, Turkish), metric or imperial units, an installable offline-capable web app, and Android / iOS apps with native notifications, haptics and sharing.
 
 ---
 
 ## 1. Prerequisites
 
-- [Node.js](https://nodejs.org/) 18.18 or newer
+- [Node.js](https://nodejs.org/) 20 or newer
 - A free [Supabase](https://supabase.com) account
-- A [Google Cloud](https://console.cloud.google.com/) account (only needed for "Continue with Google")
 - A [Vercel](https://vercel.com) account, for deployment
+- *(optional)* A [Google Cloud](https://console.cloud.google.com/) account for "Continue with Google"
+- *(for the phone apps)* [Android Studio](https://developer.android.com/studio); for iOS, a Mac with Xcode
 
 ---
 
-## 2. Create your Supabase project
+## 2. Create your Supabase project and database
 
-1. Go to [supabase.com/dashboard](https://supabase.com/dashboard) → **New project**.
-2. Pick a name, a database password (save it somewhere safe), and a region close to you.
-3. Once the project is ready, open **Settings → API**. You'll need two values in a moment:
-   - **Project URL** (`https://xxxxx.supabase.co`)
-   - **anon / public key**
+1. [supabase.com/dashboard](https://supabase.com/dashboard) → **New project**. Save the database password.
+2. **Settings → API**: copy the **Project URL** and **anon / public key**.
+3. **SQL Editor → New query**: paste the whole of `supabase/schema.sql` and click **Run**. It creates:
+   1. `profiles` and `user_progress` (private, owner-only)
+   2. the signup trigger
+   3. the private **`progress-photos`** storage bucket
+   4. **`delete_own_account()`** for *Settings → Delete account*
+   5. the **community**: `community_profiles`, `channels` (8 starter channels), `messages`, `message_reports`, `user_blocks`, `community_moderators`, `community_bans`, rate limiting and Realtime for live chat
 
-### Run the database schema
+The file is safe to re-run any time (`if not exists`, `on conflict do nothing`, `drop policy if exists`). **Upgrading an existing project? Run it again** — the new sections are added without touching existing data.
 
-1. In the Supabase dashboard, open **SQL Editor → New query**.
-2. Open `supabase/schema.sql` from this project, copy its entire contents, paste it into the editor, and click **Run**.
-3. This creates the `profiles` and `user_progress` tables, enables Row Level Security, and sets up a trigger so every new signup automatically gets its own empty progress record. It also creates:
-   - the private **`progress-photos`** storage bucket, with policies that only let each user read, upload and delete files in their own folder;
-   - the **`delete_own_account()`** function used by *Settings → Delete account*.
+### Moderating the community
 
-You can re-run this file safely at any time — it uses `create table if not exists`, `on conflict do nothing` and `drop policy if exists` guards.
-
-> **Upgrading an existing project?** Re-run the whole file once. Sections 5 (progress photos) and 6 (account deletion) are new; without them, photo uploads and account deletion show a "not set up yet" message, and everything else keeps working.
-
----
-
-## 3. Set up Google OAuth (optional, for "Continue with Google")
-
-You can skip this section and use email/password only — the app works fully without it.
-
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/) → create or select a project.
-2. Go to **APIs & Services → OAuth consent screen**. Choose **External**, fill in the required fields (app name, support email), and save.
-3. Go to **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
-   - Application type: **Web application**
-   - Authorized redirect URI: `https://xxxxx.supabase.co/auth/v1/callback` (use your actual Supabase project URL — find it in Supabase under **Authentication → Providers → Google**, it's shown there).
-4. Click **Create**. Copy the **Client ID** and **Client Secret**.
-5. In Supabase, go to **Authentication → Providers → Google**, toggle it on, and paste in the Client ID and Client Secret. Save.
-
-That's it — no Google credentials go into your app's own environment variables; Supabase handles the OAuth exchange for you.
+- **Make someone a moderator:** Table Editor → `community_moderators` → insert their user id (from Authentication → Users). Moderators can delete any message and read reports.
+- **Review reports:** Table Editor → `message_reports`.
+- **Ban someone:** insert their user id into `community_bans`. They can still read but can no longer post.
 
 ---
 
-## 4. Configure environment variables
+## 3. Google sign-in (optional)
 
-1. Copy the example file:
-   ```bash
-   cp .env.example .env.local
-   ```
-2. Fill in the values from Supabase's **Settings → API** page:
-   ```bash
-   NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-   NEXT_PUBLIC_SITE_URL=http://localhost:3000
-   ```
-   `NEXT_PUBLIC_SITE_URL` is used to build the Google OAuth redirect link — keep it as `http://localhost:3000` for local dev, and set it to your real domain once deployed (see step 6).
+1. Google Cloud Console → **APIs & Services → OAuth consent screen** → External → fill in app name and support email.
+2. **Credentials → Create credentials → OAuth client ID** → Web application. Authorized redirect URI: `https://xxxxx.supabase.co/auth/v1/callback` (shown in Supabase under **Authentication → Providers → Google**).
+3. Paste the Client ID and Secret into Supabase → **Authentication → Providers → Google** and enable it.
+
+---
+
+## 4. Environment variables
+
+```bash
+cp .env.example .env.local
+```
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+Set `NEXT_PUBLIC_SITE_URL` to your real domain in production — it's used for the Google redirect, social previews, the sitemap and calendar reminders.
 
 ---
 
@@ -94,72 +93,71 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Create an account, and you should land on Day 1 of the program.
-
-**Verify it's working:**
-- Sign up with a second, different account (or an incognito window) — it should start completely fresh, with none of the first account's progress.
-- Log out and back in on the first account — your progress should still be there.
-- In the Supabase dashboard, check **Table Editor → user_progress** — you should see one row per account.
+Open [http://localhost:3000](http://localhost:3000), create an account, and pick your coach.
 
 ---
 
 ## 6. Deploy to Vercel
 
-1. Push this project to a GitHub repository.
-2. Go to [vercel.com/new](https://vercel.com/new) and import that repository.
-3. Vercel will auto-detect Next.js — no build configuration changes needed.
-4. Before deploying, add the environment variables (**Project Settings → Environment Variables**):
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `NEXT_PUBLIC_SITE_URL` → set this to your Vercel URL, e.g. `https://your-app.vercel.app`
-5. Deploy.
-6. Back in Supabase, go to **Authentication → URL Configuration** and add your Vercel URL to both **Site URL** and **Redirect URLs** (e.g. `https://your-app.vercel.app/**`). This is required for Google OAuth and email confirmation links to redirect correctly in production.
-
-Once deployed, repeat the two-account check from step 5 against your live URL.
+1. Import the GitHub repository at [vercel.com/new](https://vercel.com/new).
+2. Add the three environment variables above (with your Vercel URL as `NEXT_PUBLIC_SITE_URL`).
+3. Deploy.
+4. In Supabase → **Authentication → URL Configuration**, add your URL to **Site URL** and **Redirect URLs** (e.g. `https://your-app.vercel.app/**`).
 
 ---
 
-## Project structure
+## 7. Android and iOS apps
 
-```
-src/
-  app/
-    (auth)/login, (auth)/signup      — public auth pages
-    auth/callback                    — OAuth code exchange route
-    (app)/                           — protected app (requires login)
-      dashboard, workout, exercises,
-      nutrition, progress, resources,
-      settings
-    page.tsx                         — public landing page
-  components/
-    ui/          — design system primitives (Button, Card, Modal, …)
-    layout/      — sidebar, mobile nav, app shell
-    auth/        — login/signup forms, Google button
-    workout/     — day selector, exercise list, session player
-    exercises/   — exercise grid + detail modal
-    dashboard/   — dashboard widgets
-    progress/    — measurements, strength test, habit calendar
-  context/
-    auth-context.tsx      — current user/profile + sign out
-    progress-context.tsx  — cloud-synced tracking data (replaces localStorage)
-  lib/
-    program/     — the 365-day program, exercise library, nutrition, resources data
-    supabase/    — browser/server Supabase clients + middleware session helper
-    types.ts, utils.ts
-  middleware.ts  — session refresh + route protection
-supabase/
-  schema.sql     — full database schema, RLS policies, and signup trigger
+The native apps (in `android/` and `ios/`) are a Capacitor shell that loads your deployed site, so every deploy updates the apps instantly. They add native daily notifications, haptics, the share sheet, the Android back button, a splash screen and app icons.
+
+1. Deploy the site first (step 6).
+2. Point the apps at it and sync:
+   ```bash
+   CAP_SERVER_URL=https://your-app.vercel.app npx cap sync
+   ```
+   (PowerShell: `$env:CAP_SERVER_URL="https://your-app.vercel.app"; npx cap sync`)
+3. **Android:** `npx cap open android` → in Android Studio, **Build → Generate Signed App Bundle** → upload the `.aab` to Google Play Console ($25 one-time developer account).
+4. **iOS (needs a Mac):** `npx cap open ios` → in Xcode, set your Team under *Signing & Capabilities*, then **Product → Archive** → upload to App Store Connect ($99/year Apple Developer Program).
+
+Store listings need a privacy policy URL and screenshots. Apple reviews apps that load a website closely; the native notifications, haptics and sharing are there to help it pass, but approval isn't guaranteed.
+
+To regenerate icons and splash screens after changing `assets/`:
+
+```bash
+npx capacitor-assets generate --android --ios
 ```
 
-## How user data privacy is enforced
+---
 
-- Every table (`profiles`, `user_progress`) has Row Level Security enabled with policies that check `auth.uid()` against the row's owner — this is enforced by Postgres itself, not just app code.
-- The Supabase **anon key** is safe to expose in the browser (it's designed to be public) — it can only do what RLS allows, which is "read/write your own rows."
-- No service-role key or other secret is used anywhere in this project, so there is nothing sensitive to leak.
-- A new signup gets an empty `user_progress` row via a database trigger, before the app ever loads — there's no window where a new account could see stale or shared data.
+## Translations
+
+- Text lives in `src/messages/<locale>.json`; `en.json` is the source of truth.
+- The language comes from the user's choice (saved in a cookie) or their browser, and any missing key falls back to English.
+- After editing `en.json`, update the other files and run:
+  ```bash
+  npm run check:i18n
+  ```
+  It reports missing keys, extra keys and mismatched `{placeholders}`.
+- The current translations are first drafts. Have native speakers review them before a big launch.
+- Exercise instructions, routine and coach descriptions, guides and meal plans are still English-only.
+
+---
+
+## Coach artwork
+
+The coach portraits were AI-generated in the Figma file **"Level Up Dojo — Coach Art"**. Full-resolution originals are in `art/coaches/` (kept out of git); the web-optimized versions are in `public/images/coaches/`. To add a coach, generate a portrait in the same style, export a 768 px and a 160 px WebP, and add an entry to `src/lib/coaches.ts`.
+
+---
 
 ## Development notes
 
-- `npm run build` runs the TypeScript check and a full production build; `npx tsc --noEmit` and `npm run lint` are quicker checks while editing.
-- The offline service worker (`public/sw.js`) is only registered in production builds (`npm run build && npm start`), so it never caches pages while you develop. Bump `VERSION` at the top of that file when you change its caching rules.
-- App icons, the web app manifest, `robots.txt`, `sitemap.xml` and the social preview image are generated by Next.js from files in `src/app/` (`icons/*/route.tsx`, `manifest.ts`, `robots.ts`, `sitemap.ts`, `opengraph-image.tsx`). Set `NEXT_PUBLIC_SITE_URL` in production so their links use your real domain.
+- `npm run build` runs the TypeScript check and a full production build; `npx tsc --noEmit`, `npm run lint` and `npm run check:i18n` are quicker checks.
+- The offline service worker (`public/sw.js`) only registers in production builds. Bump `VERSION` in it when you change caching rules.
+- App icons, the manifest, `robots.txt`, `sitemap.xml` and the social image are generated from `src/app/`.
+
+## How user data privacy is enforced
+
+- Every table has Row Level Security. Private tables (`profiles`, `user_progress`) are owner-only; community tables expose only the public profile fields and messages to signed-in members.
+- The Supabase anon key is safe to expose — it can only do what RLS allows. No service-role key is used anywhere.
+- Progress photos are in a private bucket, served only through short-lived signed links to their owner.
+- Deleting an account removes the auth user, which cascades to every row they own, including community messages; photos are removed through the Storage API first.

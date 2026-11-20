@@ -3,12 +3,12 @@
 import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import { Dumbbell, Heart, Search, X } from 'lucide-react';
-import { EXERCISES } from '@/lib/program/exercises';
+import { EQUIPMENT_LABELS, EXERCISES, exerciseEquipment } from '@/lib/program/exercises';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useProgress } from '@/context/progress-context';
 import { cn, DIFFICULTY_TONE } from '@/lib/utils';
-import type { Difficulty, Exercise, ExerciseCategory } from '@/lib/types';
+import type { Difficulty, Equipment, Exercise, ExerciseCategory } from '@/lib/types';
 
 const CATEGORIES: { id: ExerciseCategory | 'all' | 'favorites'; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -17,6 +17,8 @@ const CATEGORIES: { id: ExerciseCategory | 'all' | 'favorites'; label: string }[
   { id: 'pull', label: 'Pull' },
   { id: 'legs', label: 'Legs' },
   { id: 'core', label: 'Core' },
+  { id: 'cardio', label: 'Cardio' },
+  { id: 'full', label: 'Full body' },
   { id: 'mobility', label: 'Mobility' },
 ];
 
@@ -29,12 +31,14 @@ const DIFFICULTIES: { id: Difficulty | 'all'; label: string }[] = [
 
 const ALL_EXERCISES = Object.values(EXERCISES);
 const ALL_MUSCLES = Array.from(new Set(ALL_EXERCISES.flatMap((e) => e.muscles))).sort();
+const ALL_EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[];
 
 export function ExerciseGrid({ onSelect }: { onSelect: (exercise: Exercise) => void }) {
   const { progress, toggleFavoriteExercise } = useProgress();
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]['id']>('all');
   const [difficulty, setDifficulty] = useState<Difficulty | 'all'>('all');
   const [muscle, setMuscle] = useState<string>('all');
+  const [equipment, setEquipment] = useState<Equipment | 'all'>('all');
   const [query, setQuery] = useState('');
 
   const favorites = useMemo(() => new Set(progress.favoriteExercises), [progress.favoriteExercises]);
@@ -45,19 +49,21 @@ export function ExerciseGrid({ onSelect }: { onSelect: (exercise: Exercise) => v
       category === 'all' || (category === 'favorites' ? favorites.has(ex.key) : ex.category === category);
     const matchesDifficulty = difficulty === 'all' || ex.difficulty === difficulty;
     const matchesMuscle = muscle === 'all' || ex.muscles.includes(muscle);
+    const matchesEquipment = equipment === 'all' || exerciseEquipment(ex).includes(equipment);
     const matchesQuery =
       !q ||
       ex.name.toLowerCase().includes(q) ||
       ex.description.toLowerCase().includes(q) ||
       ex.muscles.some((m) => m.toLowerCase().includes(q));
-    return matchesCategory && matchesDifficulty && matchesMuscle && matchesQuery;
+    return matchesCategory && matchesDifficulty && matchesMuscle && matchesEquipment && matchesQuery;
   });
 
-  const filtersActive = category !== 'all' || difficulty !== 'all' || muscle !== 'all' || query !== '';
+  const filtersActive = category !== 'all' || difficulty !== 'all' || muscle !== 'all' || equipment !== 'all' || query !== '';
   const clearFilters = () => {
     setCategory('all');
     setDifficulty('all');
     setMuscle('all');
+    setEquipment('all');
     setQuery('');
   };
 
@@ -118,6 +124,19 @@ export function ExerciseGrid({ onSelect }: { onSelect: (exercise: Exercise) => v
           {ALL_MUSCLES.map((m) => (
             <option key={m} value={m}>
               {m}
+            </option>
+          ))}
+        </select>
+        <select
+          value={equipment}
+          onChange={(e) => setEquipment(e.target.value as Equipment | 'all')}
+          aria-label="Filter by equipment"
+          className="rounded-sm border border-line bg-surface px-3 py-1.5 text-sm text-ink focus:border-forge focus:outline-none"
+        >
+          <option value="all">Any equipment</option>
+          {ALL_EQUIPMENT.map((eq) => (
+            <option key={eq} value={eq}>
+              {EQUIPMENT_LABELS[eq]}
             </option>
           ))}
         </select>

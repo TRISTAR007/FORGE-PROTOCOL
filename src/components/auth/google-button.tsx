@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ function GoogleIcon() {
 }
 
 export function GoogleButton({ next }: { next?: string }) {
+  const t = useTranslations('auth');
   const [loading, setLoading] = useState(false);
 
   const handleClick = async () => {
@@ -42,7 +44,7 @@ export function GoogleButton({ next }: { next?: string }) {
   return (
     <Button type="button" variant="secondary" size="lg" className="w-full" onClick={handleClick} loading={loading}>
       {!loading && <GoogleIcon />}
-      Continue with Google
+      {t('continueGoogle')}
     </Button>
   );
 }

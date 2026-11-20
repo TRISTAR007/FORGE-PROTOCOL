@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { LoginForm } from '@/components/auth/login-form';
 
-export const metadata: Metadata = { title: 'Sign In — FORGE Protocol' };
+export const metadata: Metadata = { title: 'Sign In — Level Up Dojo' };
 
 export default function LoginPage() {
   return (

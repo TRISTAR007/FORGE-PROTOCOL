@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useProgram } from '@/hooks/use-program';
 import { PHASES } from '@/lib/program/program';
@@ -9,6 +11,7 @@ import { cn } from '@/lib/utils';
 const PHASE_WEEKS = [8, 8, 8, 8, 8, 12];
 
 export function PhaseTimeline() {
+  const t = useTranslations('dashboard');
   const { today, totalDays } = useProgram();
   const totalWeeks = PHASE_WEEKS.reduce((a, b) => a + b, 0);
   const position = Math.min(100, ((today.dayNumber - 0.5) / totalDays) * 100);
@@ -18,9 +21,9 @@ export function PhaseTimeline() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>The Year Ahead</CardTitle>
+        <CardTitle>{t('yearAhead')}</CardTitle>
         <span className="font-mono text-xs text-ink-faint">
-          Week {today.weekNumber} · {Math.max(0, totalDays - today.dayNumber)} days left
+          {t('weekDaysLeft', { week: today.weekNumber, days: Math.max(0, totalDays - today.dayNumber) })}
         </span>
       </CardHeader>
       <CardContent>
@@ -29,7 +32,7 @@ export function PhaseTimeline() {
             className="absolute top-0 -translate-x-1/2 font-mono text-[10px] uppercase tracking-widest text-forge"
             style={{ left: `${position}%` }}
           >
-            You
+            {t('you')}
           </span>
           <span
             className="absolute top-4 z-10 h-5 w-0.5 -translate-x-1/2 rounded-full bg-forge shadow-glow"
@@ -73,7 +76,7 @@ export function PhaseTimeline() {
           <p className="text-sm font-semibold text-ink">
             Phase {current.id}: {current.name}{' '}
             <span className="font-mono text-xs font-normal text-ink-faint">
-              · week {weekInPhase} of {PHASE_WEEKS[current.id - 1]}
+              · {t('phaseWeek', { week: weekInPhase, total: PHASE_WEEKS[current.id - 1] })}
             </span>
           </p>
           <p className="mt-0.5 text-sm text-ink-muted">{current.description}</p>

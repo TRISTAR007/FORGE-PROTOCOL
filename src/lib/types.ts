@@ -2,8 +2,24 @@
 // Shared types
 // =====================================================================
 
-export type ExerciseCategory = 'push' | 'pull' | 'legs' | 'core' | 'mobility';
+export type ExerciseCategory = 'push' | 'pull' | 'legs' | 'core' | 'mobility' | 'cardio' | 'full';
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
+
+/** Equipment an exercise needs. `none` = bodyweight / household items only. */
+export type Equipment =
+  | 'none'
+  | 'dumbbell'
+  | 'kettlebell'
+  | 'band'
+  | 'pullup-bar'
+  | 'barbell'
+  | 'bench'
+  | 'jump-rope'
+  | 'cable'
+  | 'machine';
+
+/** Which version of the 365-day program the person follows. */
+export type TrainingMode = 'home' | 'dumbbells' | 'gym';
 
 export interface Exercise {
   key: string;
@@ -17,6 +33,8 @@ export interface Exercise {
   sets: number;
   reps: string;
   rest: string;
+  /** Defaults to ['none'] (bodyweight) when omitted. */
+  equipment?: Equipment[];
 }
 
 /** A single exercise slot inside a workout day, referencing the library by key. */
@@ -146,6 +164,10 @@ export interface ProgressData {
   /** Chosen option index per meal title (0 = the default meal). */
   mealSwaps: Record<string, number>;
   progressPhotos: ProgressPhoto[];
+  /** Quick workouts finished from the Workouts library (newest last, capped). */
+  routineLogs: RoutineLog[];
+  /** Training-arc challenges: arcId → progress. */
+  arcs: Record<string, ArcProgress>;
 }
 
 // ---------------------------------------------------------------------
@@ -153,6 +175,8 @@ export interface ProgressData {
 // ---------------------------------------------------------------------
 
 export type UnitSystem = 'metric' | 'imperial';
+
+export type NutritionRegion = 'global' | 'west-africa' | 'south-asia' | 'east-asia' | 'latin-america' | 'mena';
 
 export interface UserSettings {
   /** Display units only — measurements are always stored in kg / cm. */
@@ -164,15 +188,24 @@ export interface UserSettings {
   waterGoal: number;
   /** Daily reminder time, HH:MM (local). */
   reminderTime: string;
+  /** The coach who guides workouts and greets you (see lib/coaches). */
+  coachId: string;
+  /** Which version of the 365-day program to follow. */
+  trainingMode: TrainingMode;
+  /** Meal plan region for the nutrition page. */
+  region: NutritionRegion;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
   units: 'metric',
   sound: true,
-  voice: false,
+  voice: true,
   vibration: true,
   waterGoal: 8,
   reminderTime: '18:00',
+  coachId: 'kaito',
+  trainingMode: 'home',
+  region: 'global',
 };
 
 export function getSettings(data: Pick<ProgressData, 'settings'>): UserSettings {
@@ -185,6 +218,22 @@ export interface SessionLog {
   durationSec: number;
   /** reps[exerciseIndex][setIndex] — null for timed holds or skipped sets. Kept compact on purpose. */
   reps: (number | null)[][];
+  /** Exercise key per index. Present on newer logs; older logs are resolved from the home program. */
+  keys?: string[];
+}
+
+export interface RoutineLog {
+  routineId: string;
+  date: string; // YYYY-MM-DD
+  durationSec: number;
+  reps: (number | null)[][];
+  keys: string[];
+}
+
+export interface ArcProgress {
+  startedOn: string; // YYYY-MM-DD
+  /** Arc day numbers (1-based) completed. */
+  doneDays: number[];
 }
 
 export interface NutritionProfile {
@@ -223,6 +272,8 @@ export const EMPTY_PROGRESS: ProgressData = {
   nutritionProfile: {},
   mealSwaps: {},
   progressPhotos: [],
+  routineLogs: [],
+  arcs: {},
 };
 
 export interface Profile {

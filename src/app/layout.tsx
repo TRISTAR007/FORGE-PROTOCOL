@@ -1,71 +1,90 @@
 import type { Metadata, Viewport } from 'next';
-import { Anton, Manrope, JetBrains_Mono } from 'next/font/google';
+import { Dela_Gothic_One, M_PLUS_Rounded_1c, JetBrains_Mono } from 'next/font/google';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 import { ServiceWorkerRegistration } from '@/components/pwa/service-worker';
+import { NativeBridge } from '@/components/native/native-bridge';
+import { RTL_LOCALES, type Locale } from '@/i18n/config';
+import { APP_NAME } from '@/lib/brand';
 import './globals.css';
 
-const anton = Anton({
+// Heavy, poster-style display face with an anime title-card feel.
+const display = Dela_Gothic_One({
   subsets: ['latin'],
   weight: '400',
-  variable: '--font-anton',
+  variable: '--font-display',
   display: 'swap',
 });
 
-const manrope = Manrope({
+// Friendly rounded body face. CJK, Hindi and Arabic text falls back to the system's native fonts.
+const body = M_PLUS_Rounded_1c({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-manrope',
+  weight: ['400', '500', '700', '800'],
+  variable: '--font-body',
   display: 'swap',
 });
 
-const jbMono = JetBrains_Mono({
+const mono = JetBrains_Mono({
   subsets: ['latin'],
   weight: ['400', '500', '700'],
-  variable: '--font-jbmono',
+  variable: '--font-mono',
   display: 'swap',
 });
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+const TITLE = `${APP_NAME} — Free Anime Workouts, Coaches & Community`;
 const DESCRIPTION =
-  'A 365-day bodyweight training, nutrition, and recovery protocol — built for training at home, on a budget, with no equipment.';
+  'Free home and gym workouts guided by original anime-style coaches, with voice coaching, XP and belts, 30-day Training Arcs and a worldwide community. For anime fans and everyone else.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: 'FORGE Protocol — 365-Day Home Transformation',
+  title: TITLE,
   description: DESCRIPTION,
-  applicationName: 'FORGE Protocol',
+  applicationName: APP_NAME,
   icons: {
     apple: '/icons/apple-touch-icon.png',
   },
   appleWebApp: {
     capable: true,
-    title: 'FORGE',
+    title: 'Dojo',
     statusBarStyle: 'black-translucent',
   },
   openGraph: {
     type: 'website',
-    siteName: 'FORGE Protocol',
-    title: 'FORGE Protocol — 365-Day Home Transformation',
+    siteName: APP_NAME,
+    title: TITLE,
     description: DESCRIPTION,
     url: '/',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'FORGE Protocol — 365-Day Home Transformation',
+    title: TITLE,
     description: DESCRIPTION,
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#131417',
+  themeColor: '#0C0A1D',
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = (await getLocale()) as Locale;
+  const messages = await getMessages();
+
   return (
-    <html lang="en" className={`${anton.variable} ${manrope.variable} ${jbMono.variable}`}>
+    <html
+      lang={locale}
+      dir={RTL_LOCALES.includes(locale) ? 'rtl' : 'ltr'}
+      className={`${display.variable} ${body.variable} ${mono.variable}`}
+    >
       <body>
-        {children}
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          {children}
+          <NativeBridge />
+        </NextIntlClientProvider>
         <ServiceWorkerRegistration />
       </body>
     </html>

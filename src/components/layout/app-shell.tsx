@@ -12,13 +12,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [moreOpen, setMoreOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-bg">
+    // No background here: the body's night-dojo gradient shows through.
+    <div className="min-h-screen">
       <WelcomeModal />
       <MilestoneCelebration />
       <SidebarNav />
       <MobileTopBar onAvatarClick={() => setMoreOpen(true)} />
 
-      <main className="pb-24 lg:ml-64 lg:pb-0">
+      <main className="pb-[calc(6rem+env(safe-area-inset-bottom))] lg:ms-64 lg:pb-0">
         <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-10 lg:py-10">{children}</div>
       </main>
 
