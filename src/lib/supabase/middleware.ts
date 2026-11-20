@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 const AUTH_ROUTES = ['/login', '/signup'];
-const PUBLIC_ROUTES = ['/', '/auth/callback', '/auth/auth-code-error'];
+const PUBLIC_ROUTES = ['/', '/auth/callback', '/auth/auth-code-error', '/offline'];
 
 /**
  * Refreshes the Supabase auth session on every request and enforces

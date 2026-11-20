@@ -34,6 +34,56 @@ export const MEAL_PLAN: Meal[] = [
   { time: '8:00 PM', title: 'Dinner', items: ['Yam porridge', 'Fish or egusi soup', 'Vegetables'] },
 ];
 
+/**
+ * Swappable alternatives per meal (index 0 is always the default above),
+ * built from the same budget staples so the shopping list still covers them.
+ */
+export const MEAL_ALTERNATIVES: Record<string, string[][]> = {
+  Breakfast: [
+    ['Bowl of akamu (pap)', '3 akara (bean cakes)', '1 boiled egg'],
+    ['Oats cooked in milk', '1 banana', 'Spoon of groundnut paste'],
+    ['2 slices of bread', '2-egg omelette with onions & pepper', 'Glass of soymilk'],
+  ],
+  'Mid-Morning': [
+    ['Roasted corn', 'Coconut chunks'],
+    ['1 boiled egg', '1 orange'],
+  ],
+  Lunch: [
+    ['Beans porridge (ewa)', '1 fried or boiled plantain', 'Fish'],
+    ['Jollof rice', 'Grilled chicken', 'Coleslaw or cucumber'],
+    ['Eba or semo', 'Okra or ogbono soup with fish'],
+  ],
+  'Pre-Workout': [
+    ['1 banana', 'Handful of groundnuts'],
+    ['2 slices of bread with groundnut paste'],
+  ],
+  'Post-Workout': [
+    ['Moi moi', 'Glass of milk'],
+    ['Leftover rice & stew', 'Boiled egg'],
+  ],
+  Dinner: [
+    ['Boiled yam', 'Egg sauce', 'Vegetables'],
+    ['Rice & beans', 'Fish stew'],
+    ['Pounded yam or eba', 'Egusi soup with chicken'],
+  ],
+};
+
+export function mealOptions(meal: Meal): string[][] {
+  return [meal.items, ...(MEAL_ALTERNATIVES[meal.title] ?? [])];
+}
+
+/** Quick-add buttons for the protein tracker — rough, budget-food portions. */
+export const PROTEIN_FOODS: { label: string; grams: number }[] = [
+  { label: 'Egg', grams: 6 },
+  { label: 'Beans, 1 cup', grams: 15 },
+  { label: 'Moi moi', grams: 9 },
+  { label: 'Fish, 1 piece', grams: 20 },
+  { label: 'Chicken, palm-size', grams: 30 },
+  { label: 'Milk, 1 glass', grams: 8 },
+  { label: 'Groundnuts, handful', grams: 7 },
+  { label: 'Akara, 3 pieces', grams: 9 },
+];
+
 export interface ShoppingItem {
   item: string;
   quantity: string;

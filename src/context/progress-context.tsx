@@ -11,7 +11,17 @@ import {
   type ReactNode,
 } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { EMPTY_PROGRESS, type Measurements, type ProgressData, type StrengthTests } from '@/lib/types';
+import {
+  EMPTY_PROGRESS,
+  getSettings,
+  type Measurements,
+  type NutritionProfile,
+  type ProgressData,
+  type ProgressPhoto,
+  type SessionLog,
+  type StrengthTests,
+  type UserSettings,
+} from '@/lib/types';
 import { todayKey } from '@/lib/utils';
 import { withDayStatus } from '@/lib/program/training-stats';
 
@@ -20,7 +30,17 @@ type Updater = (prev: ProgressData) => ProgressData;
 
 interface ProgressContextValue {
   progress: ProgressData;
+  settings: UserSettings;
   saveStatus: SaveStatus;
+  logSession: (log: SessionLog) => void;
+  updateSettings: (patch: Partial<UserSettings>) => void;
+  toggleFavoriteExercise: (key: string) => void;
+  addProtein: (dateKey: string, grams: number) => void;
+  updateNutritionProfile: (patch: NutritionProfile) => void;
+  setMealSwap: (mealTitle: string, optionIndex: number) => void;
+  resetShoppingList: () => void;
+  addProgressPhoto: (photo: ProgressPhoto) => void;
+  removeProgressPhoto: (id: string) => void;
   toggleChecklistItem: (dayNumber: number, index: number) => void;
   toggleExerciseCheck: (dayNumber: number, index: number) => void;
   completeAllExercises: (dayNumber: number, count: number) => void;
@@ -277,7 +297,7 @@ export function ProgressProvider({
     (dateKey: string, amount: number) => {
       mutate((prev) => ({
         ...prev,
-        waterIntake: { ...prev.waterIntake, [dateKey]: Math.max(0, Math.min(12, amount)) },
+        waterIntake: { ...prev.waterIntake, [dateKey]: Math.max(0, Math.min(20, amount)) },
       }));
     },
     [mutate]
@@ -378,9 +398,94 @@ export function ProgressProvider({
     [mutate]
   );
 
+  const logSession = useCallback(
+    (log: SessionLog) => {
+      mutate((prev) => ({
+        ...prev,
+        sessionLogs: [...prev.sessionLogs.filter((l) => l.dayNumber !== log.dayNumber), log].sort(
+          (a, b) => a.dayNumber - b.dayNumber
+        ),
+      }));
+    },
+    [mutate]
+  );
+
+  const updateSettings = useCallback(
+    (patch: Partial<UserSettings>) => {
+      mutate((prev) => ({ ...prev, settings: { ...prev.settings, ...patch } }));
+    },
+    [mutate]
+  );
+
+  const toggleFavoriteExercise = useCallback(
+    (key: string) => {
+      mutate((prev) => ({
+        ...prev,
+        favoriteExercises: prev.favoriteExercises.includes(key)
+          ? prev.favoriteExercises.filter((k) => k !== key)
+          : [...prev.favoriteExercises, key],
+      }));
+    },
+    [mutate]
+  );
+
+  const addProtein = useCallback(
+    (dateKey: string, grams: number) => {
+      mutate((prev) => ({
+        ...prev,
+        proteinLog: { ...prev.proteinLog, [dateKey]: Math.max(0, Math.round((prev.proteinLog[dateKey] ?? 0) + grams)) },
+      }));
+    },
+    [mutate]
+  );
+
+  const updateNutritionProfile = useCallback(
+    (patch: NutritionProfile) => {
+      mutate((prev) => ({ ...prev, nutritionProfile: { ...prev.nutritionProfile, ...patch } }));
+    },
+    [mutate]
+  );
+
+  const setMealSwap = useCallback(
+    (mealTitle: string, optionIndex: number) => {
+      mutate((prev) => ({ ...prev, mealSwaps: { ...prev.mealSwaps, [mealTitle]: optionIndex } }));
+    },
+    [mutate]
+  );
+
+  const resetShoppingList = useCallback(() => {
+    mutate((prev) => (Object.keys(prev.shoppingListChecked).length === 0 ? prev : { ...prev, shoppingListChecked: {} }));
+  }, [mutate]);
+
+  const addProgressPhoto = useCallback(
+    (photo: ProgressPhoto) => {
+      mutate((prev) => ({ ...prev, progressPhotos: [...prev.progressPhotos.filter((p) => p.id !== photo.id), photo] }));
+    },
+    [mutate]
+  );
+
+  const removeProgressPhoto = useCallback(
+    (id: string) => {
+      mutate((prev) => ({ ...prev, progressPhotos: prev.progressPhotos.filter((p) => p.id !== id) }));
+    },
+    [mutate]
+  );
+
+  const settings = useMemo(() => getSettings(progress), [progress]);
+
   const value: ProgressContextValue = {
     progress,
+    settings,
     saveStatus,
+    logSession,
+    updateSettings,
+    toggleFavoriteExercise,
+    addProtein,
+    updateNutritionProfile,
+    setMealSwap,
+    resetShoppingList,
+    addProgressPhoto,
+    removeProgressPhoto,
     toggleChecklistItem,
     toggleExerciseCheck,
     completeAllExercises,

@@ -10,9 +10,12 @@ export const config = {
     /*
      * Match all request paths except:
      * - _next/static, _next/image (Next.js internals)
-     * - favicon.ico
-     * - image/font files
+     * - favicon / app icons, the web app manifest and the service worker
+     *   (browsers fetch these without a session; a login redirect would
+     *   break installing the app)
+     * - robots.txt, sitemap.xml and the social preview image (for crawlers)
+     * - image files
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|icon.svg|icons/|manifest.webmanifest|sw.js|robots.txt|sitemap.xml|opengraph-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 };

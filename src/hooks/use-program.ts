@@ -9,9 +9,10 @@ import type { ResolvedWorkout } from '@/lib/types';
 /** Everything a page needs to know about "today" in the user's 365-day program. */
 export function useProgram() {
   const { profile } = useAuth();
+  const startKey = profile?.program_start_date;
 
   return useMemo(() => {
-    const startDate = profile?.program_start_date ? parseDateKey(profile.program_start_date) : new Date();
+    const startDate = startKey ? parseDateKey(startKey) : new Date();
     const rawDay = daysBetween(startDate, new Date()) + 1;
     const todayDayNumber = clamp(rawDay, 1, PROGRAM_LENGTH_DAYS);
 
@@ -25,5 +26,5 @@ export function useProgram() {
       getWorkout,
       today: getWorkout(todayDayNumber),
     };
-  }, [profile?.program_start_date]);
+  }, [startKey]);
 }

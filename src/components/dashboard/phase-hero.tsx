@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Flame } from 'lucide-react';
+import { Flame, Play } from 'lucide-react';
 import { RingProgress } from '@/components/ui/ring-progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -46,11 +46,28 @@ export function PhaseHero({
             ) : null}
           </div>
         </div>
-        <Link href="/workout" className="w-full sm:w-auto">
-          <Button size="lg" className="w-full sm:w-auto">
-            {workout.isRestDay ? 'View Rest Day' : "Go to Today's Workout"}
-          </Button>
-        </Link>
+        {workout.isRestDay ? (
+          <Link href="/workout" className="w-full sm:w-auto">
+            <Button size="lg" className="w-full sm:w-auto">
+              View Rest Day
+            </Button>
+          </Link>
+        ) : (
+          <div className="flex w-full flex-col gap-2 sm:w-auto">
+            <Link href="/workout?start=1" className="w-full sm:w-auto">
+              <Button size="lg" className="w-full sm:w-auto">
+                <Play size={18} />
+                Start Today&apos;s Workout
+              </Button>
+            </Link>
+            <Link
+              href="/workout"
+              className="text-center text-sm font-semibold text-ink-muted transition-colors hover:text-forge"
+            >
+              View the plan · {workout.duration}
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

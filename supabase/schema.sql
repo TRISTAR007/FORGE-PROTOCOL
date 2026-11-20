@@ -148,6 +148,59 @@ create trigger on_auth_user_created
   for each row execute procedure public.handle_new_user();
 
 -- ---------------------------------------------------------------------
+-- 5. Progress photos (private storage bucket)
+-- ---------------------------------------------------------------------
+-- Each user's photos live under a folder named after their user id
+-- (`<user id>/<photo id>.jpg`). The bucket is private: photos are only
+-- ever shown through short-lived signed URLs, and these policies only
+-- let a user touch objects inside their own folder.
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('progress-photos', 'progress-photos', false, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do nothing;
+
+drop policy if exists "Progress photos are viewable by owner" on storage.objects;
+create policy "Progress photos are viewable by owner"
+  on storage.objects for select to authenticated
+  using (bucket_id = 'progress-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "Progress photos are uploadable by owner" on storage.objects;
+create policy "Progress photos are uploadable by owner"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'progress-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "Progress photos are deletable by owner" on storage.objects;
+create policy "Progress photos are deletable by owner"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'progress-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ---------------------------------------------------------------------
+-- 6. Self-service account deletion
+-- ---------------------------------------------------------------------
+-- Lets a signed-in user delete their own auth account (Settings →
+-- Delete account). profiles and user_progress rows go with it via
+-- `on delete cascade`. The app removes the user's photos through the
+-- Storage API first, since storage objects can't be deleted from SQL.
+-- `security definer` is required to touch auth.users; the function only
+-- ever deletes the caller's own row.
+
+create or replace function public.delete_own_account()
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+
+revoke all on function public.delete_own_account() from public, anon;
+grant execute on function public.delete_own_account() to authenticated;
+
+-- ---------------------------------------------------------------------
 -- Done. Every new signup gets its own profile + progress row, and RLS
 -- guarantees no user can ever read or write another user's data.
 -- ---------------------------------------------------------------------

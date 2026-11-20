@@ -64,7 +64,9 @@ const config: Config = {
       keyframes: {
         fadeIn: {
           '0%': { opacity: '0', transform: 'translateY(6px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
+          // `none` (not translateY(0)): with fill-mode `both` the final frame sticks, and any
+          // lingering transform would trap position:fixed children inside the page column.
+          '100%': { opacity: '1', transform: 'none' },
         },
         scaleIn: {
           '0%': { opacity: '0', transform: 'scale(0.96)' },
@@ -78,12 +80,26 @@ const config: Config = {
           '0%, 100%': { opacity: '0.55' },
           '50%': { opacity: '1' },
         },
+        confetti: {
+          '0%': { transform: 'translate3d(0, 0, 0) rotate(0deg)', opacity: '1' },
+          '100%': {
+            transform: 'translate3d(var(--confetti-drift, 0px), 105vh, 0) rotate(var(--confetti-rotate, 720deg))',
+            opacity: '0.9',
+          },
+        },
+        pulseRing: {
+          '0%': { transform: 'scale(1)', opacity: '1' },
+          '50%': { transform: 'scale(1.04)', opacity: '0.85' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
       },
       animation: {
         fadeIn: 'fadeIn 0.35s ease both',
         scaleIn: 'scaleIn 0.2s ease both',
         shimmer: 'shimmer 1.6s linear infinite',
         ember: 'ember 2.4s ease-in-out infinite',
+        confetti: 'confetti 3s cubic-bezier(0.2, 0.6, 0.4, 1) forwards',
+        pulseRing: 'pulseRing 1s ease-in-out infinite',
       },
     },
   },

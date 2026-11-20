@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Anton, Manrope, JetBrains_Mono } from 'next/font/google';
+import { ServiceWorkerRegistration } from '@/components/pwa/service-worker';
 import './globals.css';
 
 const anton = Anton({
@@ -23,10 +24,35 @@ const jbMono = JetBrains_Mono({
   display: 'swap',
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+const DESCRIPTION =
+  'A 365-day bodyweight training, nutrition, and recovery protocol — built for training at home, on a budget, with no equipment.';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: 'FORGE Protocol — 365-Day Home Transformation',
-  description:
-    'A 365-day bodyweight training, nutrition, and recovery protocol — built for training at home, on a budget, with no equipment.',
+  description: DESCRIPTION,
+  applicationName: 'FORGE Protocol',
+  icons: {
+    apple: '/icons/apple-touch-icon.png',
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'FORGE',
+    statusBarStyle: 'black-translucent',
+  },
+  openGraph: {
+    type: 'website',
+    siteName: 'FORGE Protocol',
+    title: 'FORGE Protocol — 365-Day Home Transformation',
+    description: DESCRIPTION,
+    url: '/',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'FORGE Protocol — 365-Day Home Transformation',
+    description: DESCRIPTION,
+  },
 };
 
 export const viewport: Viewport = {
@@ -38,7 +64,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${anton.variable} ${manrope.variable} ${jbMono.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ServiceWorkerRegistration />
+      </body>
     </html>
   );
 }

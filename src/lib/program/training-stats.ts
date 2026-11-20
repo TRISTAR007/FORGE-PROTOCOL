@@ -1,4 +1,4 @@
-import type { ProgressData } from '@/lib/types';
+import type { ProgressData, SessionLog } from '@/lib/types';
 import { daysBetween, parseDateKey } from '@/lib/utils';
 import { PROGRAM_LENGTH_DAYS, resolveWorkout } from './program';
 
@@ -81,6 +81,62 @@ function isScheduledRestDay(dayNumber: number): boolean {
  *  - Scheduled rest/recovery days never break it — they only add to it
  *    if the user actually completed them.
  */
+export function calculateLongestStreak(trainedDays: Set<number>, todayDayNumber: number): number {
+  let best = 0;
+  let run = 0;
+  for (let day = 1; day <= todayDayNumber; day++) {
+    if (trainedDays.has(day)) {
+      run++;
+      best = Math.max(best, run);
+    } else if (!isScheduledRestDay(day) && day !== todayDayNumber) {
+      run = 0;
+    }
+  }
+  return best;
+}
+
+/**
+ * Training days missed in a row right before today (rest days are
+ * skipped over, a trained day ends the run). Returns the earliest missed
+ * day so the schedule can be shifted to resume from it.
+ */
+export function getMissedRun(trainedDays: Set<number>, todayDayNumber: number): { count: number; firstMissedDay: number | null } {
+  let count = 0;
+  let firstMissedDay: number | null = null;
+  for (let day = todayDayNumber - 1; day >= 1; day--) {
+    if (trainedDays.has(day)) break;
+    if (isScheduledRestDay(day)) continue;
+    count++;
+    firstMissedDay = day;
+  }
+  return { count, firstMissedDay };
+}
+
+/** Upper end of a rep target like "8-12", "10 each", "20 total" → 12 / 10 / 20. Null for timed targets. */
+export function repTargetTop(reps: string | undefined): number | null {
+  if (!reps || /\d\s*s\b/i.test(reps)) return null;
+  const nums = reps.match(/\d+/g);
+  return nums ? Number(nums[nums.length - 1]) : null;
+}
+
+/** Best single-set reps per exercise key across the given guided-session logs. */
+export function getPersonalBests(logs: SessionLog[]): Map<string, { reps: number; date: string }> {
+  const best = new Map<string, { reps: number; date: string }>();
+  for (const log of logs) {
+    const exercises = resolveWorkout(log.dayNumber, new Date()).exercises;
+    log.reps.forEach((sets, exerciseIndex) => {
+      const key = exercises[exerciseIndex]?.exerciseKey;
+      if (!key) return;
+      for (const reps of sets) {
+        if (reps == null) continue;
+        const current = best.get(key);
+        if (!current || reps > current.reps) best.set(key, { reps, date: log.date });
+      }
+    });
+  }
+  return best;
+}
+
 export function calculateStreak(trainedDays: Set<number>, todayDayNumber: number): number {
   let streak = 0;
   for (let day = todayDayNumber; day >= 1; day--) {

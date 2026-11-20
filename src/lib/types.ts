@@ -135,6 +135,71 @@ export interface ProgressData {
   /** Milestone ids already celebrated (e.g. "streak-7", "phase-2"), so a celebration only ever shows once. */
   celebratedMilestones: string[];
   onboardingCompleted: boolean;
+  /** Latest guided-session log per program day (re-doing a day replaces it). */
+  sessionLogs: SessionLog[];
+  /** Stored partially so new settings fall back to DEFAULT_SETTINGS — read via `getSettings`. */
+  settings: Partial<UserSettings>;
+  /** Grams of protein logged, keyed by YYYY-MM-DD. */
+  proteinLog: Record<string, number>;
+  favoriteExercises: string[];
+  nutritionProfile: NutritionProfile;
+  /** Chosen option index per meal title (0 = the default meal). */
+  mealSwaps: Record<string, number>;
+  progressPhotos: ProgressPhoto[];
+}
+
+// ---------------------------------------------------------------------
+// Feature data
+// ---------------------------------------------------------------------
+
+export type UnitSystem = 'metric' | 'imperial';
+
+export interface UserSettings {
+  /** Display units only — measurements are always stored in kg / cm. */
+  units: UnitSystem;
+  sound: boolean;
+  voice: boolean;
+  vibration: boolean;
+  /** Glasses of water per day. */
+  waterGoal: number;
+  /** Daily reminder time, HH:MM (local). */
+  reminderTime: string;
+}
+
+export const DEFAULT_SETTINGS: UserSettings = {
+  units: 'metric',
+  sound: true,
+  voice: false,
+  vibration: true,
+  waterGoal: 8,
+  reminderTime: '18:00',
+};
+
+export function getSettings(data: Pick<ProgressData, 'settings'>): UserSettings {
+  return { ...DEFAULT_SETTINGS, ...(data.settings ?? {}) };
+}
+
+export interface SessionLog {
+  dayNumber: number;
+  date: string; // YYYY-MM-DD
+  durationSec: number;
+  /** reps[exerciseIndex][setIndex] — null for timed holds or skipped sets. Kept compact on purpose. */
+  reps: (number | null)[][];
+}
+
+export interface NutritionProfile {
+  heightCm?: number;
+  age?: number;
+  sex?: 'male' | 'female';
+  activity?: 'light' | 'moderate' | 'active';
+  goal?: 'gain' | 'maintain';
+}
+
+export interface ProgressPhoto {
+  id: string;
+  date: string; // YYYY-MM-DD
+  /** Object path inside the private `progress-photos` storage bucket. */
+  path: string;
 }
 
 export const EMPTY_PROGRESS: ProgressData = {
@@ -151,6 +216,13 @@ export const EMPTY_PROGRESS: ProgressData = {
   shoppingListChecked: {},
   celebratedMilestones: [],
   onboardingCompleted: false,
+  sessionLogs: [],
+  settings: {},
+  proteinLog: {},
+  favoriteExercises: [],
+  nutritionProfile: {},
+  mealSwaps: {},
+  progressPhotos: [],
 };
 
 export interface Profile {

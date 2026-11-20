@@ -2,16 +2,20 @@
 
 import { Dumbbell, Flame, Trophy, Scale } from 'lucide-react';
 import { PhaseHero } from '@/components/dashboard/phase-hero';
+import { PhaseTimeline } from '@/components/dashboard/phase-timeline';
+import { MissedDaysBanner } from '@/components/dashboard/missed-days-banner';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { WeekStrip } from '@/components/dashboard/week-strip';
 import { WaterTracker } from '@/components/dashboard/water-tracker';
 import { DailyTasksWidget } from '@/components/dashboard/daily-tasks-widget';
+import { InstallPrompt } from '@/components/pwa/install-prompt';
 import { useProgress } from '@/context/progress-context';
 import { useProgram } from '@/hooks/use-program';
 import { useTrainingStats } from '@/hooks/use-training-stats';
+import { toDisplayWeight, weightUnit } from '@/lib/units';
 
 export default function DashboardPage() {
-  const { progress } = useProgress();
+  const { progress, settings } = useProgress();
   const { today, totalDays } = useProgram();
   const { streak, workoutsCompleted } = useTrainingStats();
   const pushups = progress.strengthTests.pushups;
@@ -19,13 +23,19 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-fadeIn">
+      <MissedDaysBanner />
       <PhaseHero workout={today} totalDays={totalDays} streak={streak} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard icon={Dumbbell} label="Workouts" value={String(workoutsCompleted)} sub="completed" />
         <StatCard icon={Flame} label="Streak" value={String(streak)} sub="days" />
         <StatCard icon={Trophy} label="Push-ups" value={pushups ? String(pushups) : '—'} sub="best set" />
-        <StatCard icon={Scale} label="Weight" value={weight ? `${weight}` : '—'} sub="kg" />
+        <StatCard
+          icon={Scale}
+          label="Weight"
+          value={weight ? String(toDisplayWeight(weight, settings.units)) : '—'}
+          sub={weightUnit(settings.units)}
+        />
       </div>
 
       <WeekStrip />
@@ -34,6 +44,9 @@ export default function DashboardPage() {
         <DailyTasksWidget />
         <WaterTracker />
       </div>
+
+      <PhaseTimeline />
+      <InstallPrompt />
 
       <blockquote className="rounded-md border border-line bg-surface px-6 py-5 text-sm italic text-ink-muted">
         &ldquo;{today.motivation}&rdquo;

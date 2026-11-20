@@ -309,6 +309,32 @@ export function splitLabel(split: SplitDay): string {
   return map[split];
 }
 
+const TIER_PHASES = ['Phases 1–2', 'Phases 3–4', 'Phases 5–6'];
+
+export interface ExerciseUsage {
+  dayLabel: string;
+  phases: string;
+  prescription: string;
+}
+
+/** Where an exercise appears in the weekly split, and with what sets/reps, per phase tier. */
+export function getExerciseUsage(exerciseKey: string): ExerciseUsage[] {
+  const usage: ExerciseUsage[] = [];
+  for (const template of Object.values(SPLIT)) {
+    template.tiers.forEach((tier, tierIndex) => {
+      for (const slot of tier) {
+        if (slot.exerciseKey !== exerciseKey) continue;
+        usage.push({
+          dayLabel: template.label,
+          phases: TIER_PHASES[tierIndex],
+          prescription: `${slot.sets} × ${slot.reps ?? `${slot.timeSeconds}s`}`,
+        });
+      }
+    });
+  }
+  return usage;
+}
+
 /**
  * Resolves everything about a given day of the 365-day program: which
  * split it falls on, which phase (and therefore which exercise tier)
