@@ -39,7 +39,7 @@ export function LiveSessionPreview() {
 
   return (
     <div
-      className="relative mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-line bg-surface/90 text-start shadow-raised backdrop-blur"
+      className="relative mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-line bg-surface text-start shadow-raised"
       aria-label="Preview of the guided workout player"
     >
       <div aria-hidden className={cn('speed-lines pointer-events-none absolute inset-0 transition-opacity', isRest ? 'opacity-0' : 'opacity-60')} />

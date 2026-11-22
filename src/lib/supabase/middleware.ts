@@ -38,9 +38,12 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() verifies the session token locally when the project uses
+  // asymmetric JWT signing keys (the Supabase default for new projects), so a
+  // page change no longer waits on a round trip to the Auth server. On older
+  // projects it falls back to the same server check getUser() did.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims?.sub ? { id: data.claims.sub } : null;
 
   const { pathname } = request.nextUrl;
   const isAuthRoute = AUTH_ROUTES.some((route) => pathname.startsWith(route));

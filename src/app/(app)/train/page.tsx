@@ -4,7 +4,7 @@ import { Suspense, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Check, Clock, Flag, Play, Swords, Zap } from 'lucide-react';
+import { AlertTriangle, Check, Clock, Flag, Lock, Play, Skull, Sparkles, Swords, Zap } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,12 @@ import { useCommunityShare } from '@/hooks/use-community-share';
 import { getCoach } from '@/lib/coaches';
 import { getExercise } from '@/lib/program/exercises';
 import { XP } from '@/lib/program/levels';
+import { BossEmblem } from '@/components/boss/boss-emblem';
+import { BossFight } from '@/components/boss/boss-fight';
+import { useRaidHit } from '@/hooks/use-raid-hit';
+import { BOSS_UNLOCK_DAYS, bossForArc, bossHp, isBossUnlocked } from '@/lib/program/bosses';
+import { recommendRoutines } from '@/lib/program/plan';
+import { isStressful, safeExercises } from '@/lib/program/safety';
 import { ARCS, ROUTINES, arcTarget, isArcRestDay, type Arc, type Routine, type RoutineFocus } from '@/lib/program/routines';
 import { primeAudio } from '@/lib/session-cues';
 import type { Equipment, WorkoutExercise } from '@/lib/types';
@@ -58,9 +64,15 @@ function TrainInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isClient = useIsClient();
-  const { progress, logRoutine } = useProgress();
+  const { progress, settings, logRoutine } = useProgress();
   const { toast } = useToast();
   const share = useCommunityShare();
+  const hit = useRaidHit();
+  const limitations = progress.plan?.limitations;
+  const recommended = useMemo(
+    () => new Set(progress.plan ? recommendRoutines(progress.plan, settings.trainingMode, 6).map((r) => r.id) : []),
+    [progress.plan, settings.trainingMode]
+  );
 
   const tab = searchParams.get('tab') === 'arcs' ? 'arcs' : 'quick';
   const [equipment, setEquipment] = useState<EquipmentFilter>('any');
@@ -70,7 +82,7 @@ function TrainInner() {
 
   const routines = ROUTINES.filter(
     (r) => matchesEquipment(r, equipment) && matchesTime(r, time) && (focus === 'any' || r.focus === focus)
-  );
+  ).sort((a, b) => Number(recommended.has(b.id)) - Number(recommended.has(a.id)));
   const doneCount = useMemo(() => {
     const counts = new Map<string, number>();
     for (const log of progress.routineLogs) counts.set(log.routineId, (counts.get(log.routineId) ?? 0) + 1);
@@ -83,10 +95,12 @@ function TrainInner() {
       key: `routine-${r.id}`,
       title: r.name,
       coachId: r.coachId,
-      exercises: r.exercises,
+      // Injury-friendly swaps from the plan questionnaire.
+      exercises: safeExercises(r.exercises, limitations, settings.trainingMode),
       xp: XP.quickWorkout,
       onDone: (result) => {
         logRoutine({ routineId: r.id, date: result.date, durationSec: result.durationSec, reps: result.reps, keys: result.keys });
+        hit(XP.quickWorkout);
         toast(t('routineLogged', { name: r.name, xp: XP.quickWorkout }));
       },
     });
@@ -168,6 +182,11 @@ function TrainInner() {
                         <CoachAvatar coach={coach} size={48} />
                         <div className="min-w-0 flex-1">
                           <h3 className="font-display text-lg leading-tight tracking-wide">{r.name}</h3>
+                          {recommended.has(r.id) ? (
+                            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-brass/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brass">
+                              <Sparkles size={10} /> {t('forYou')}
+                            </span>
+                          ) : null}
                           <p className="mt-0.5 text-xs text-ink-faint">{coach.name}</p>
                         </div>
                       </div>
@@ -226,9 +245,13 @@ function TrainInner() {
 
 function ArcsTab({ onStartSession }: { onStartSession: (s: ActiveSession) => void }) {
   const t = useTranslations('train.arcs');
+  const tBoss = useTranslations('bosses');
   const { progress, startArc, toggleArcDay, leaveArc } = useProgress();
   const { toast } = useToast();
+  const hit = useRaidHit();
   const [confirmLeave, setConfirmLeave] = useState<string | null>(null);
+  const [fighting, setFighting] = useState<Arc | null>(null);
+  const limitations = progress.plan?.limitations ?? [];
   const today = todayKey();
 
   const sorted = [...ARCS].sort((a, b) => Number(Boolean(progress.arcs[b.id])) - Number(Boolean(progress.arcs[a.id])));
@@ -247,7 +270,10 @@ function ArcsTab({ onStartSession }: { onStartSession: (s: ActiveSession) => voi
       exercises: [exercise],
       xp: XP.arcDay,
       onDone: () => {
-        if (!progress.arcs[arc.id]?.doneDays.includes(arcDay)) toggleArcDay(arc.id, arcDay);
+        if (!progress.arcs[arc.id]?.doneDays.includes(arcDay)) {
+          toggleArcDay(arc.id, arcDay);
+          hit(XP.arcDay);
+        }
         toast(t('loggedToast', { day: arcDay, xp: XP.arcDay }));
       },
     });
@@ -267,6 +293,10 @@ function ArcsTab({ onStartSession }: { onStartSession: (s: ActiveSession) => voi
           const rest = state && !finished && isArcRestDay(day);
           const target = arcTarget(arc, day);
           const doneToday = state?.doneDays.includes(day);
+          const boss = bossForArc(arc.id);
+          const bossRecord = progress.bosses[arc.id];
+          const bossOpen = isBossUnlocked(state) || !!bossRecord?.defeatedOn;
+          const risky = isStressful(arc.exerciseKey, limitations);
 
           return (
             <Card key={arc.id} className="overflow-hidden">
@@ -279,8 +309,36 @@ function ArcsTab({ onStartSession }: { onStartSession: (s: ActiveSession) => voi
                     {coach.name} · {exerciseName}
                   </p>
                   <p className="mt-1.5 text-sm text-ink-muted">{arc.description}</p>
+                  {risky ? (
+                    <p className="mt-1.5 flex items-center gap-1 text-xs text-brass">
+                      <AlertTriangle size={12} /> {t('risky')}
+                    </p>
+                  ) : null}
                 </div>
               </div>
+
+              {boss ? (
+                <div className="mx-5 mb-4 flex items-center gap-3 rounded-md border border-danger/25 bg-danger-dim/30 p-3">
+                  <BossEmblem boss={boss} size={44} defeated={!!bossRecord?.defeatedOn} muted={!bossOpen} />
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-danger">
+                      <Skull size={11} /> {t('bossLabel')}
+                    </p>
+                    <p className="truncate text-sm font-semibold">{tBoss(`${boss.key}.name`)}</p>
+                    <p className="text-[11px] text-ink-faint">
+                      {bossRecord?.defeatedOn
+                        ? t('bossBeaten')
+                        : bossOpen
+                          ? t('bossReady', { hp: bossHp(boss, arc) })
+                          : t('bossLocked', { done: state?.doneDays.length ?? 0, need: BOSS_UNLOCK_DAYS })}
+                    </p>
+                  </div>
+                  <Button size="sm" variant={bossOpen ? 'danger' : 'ghost'} disabled={!bossOpen} onClick={() => setFighting(arc)}>
+                    {bossOpen ? <Swords size={14} /> : <Lock size={14} />}
+                    {bossRecord?.defeatedOn ? t('rematch') : t('fight')}
+                  </Button>
+                </div>
+              ) : null}
 
               <CardContent className="pt-0">
                 {!state ? (
@@ -372,6 +430,9 @@ function ArcsTab({ onStartSession }: { onStartSession: (s: ActiveSession) => voi
           );
         })}
       </div>
+      {fighting && bossForArc(fighting.id) ? (
+        <BossFight arc={fighting} boss={bossForArc(fighting.id)!} onClose={() => setFighting(null)} />
+      ) : null}
     </div>
   );
 }

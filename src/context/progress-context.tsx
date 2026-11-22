@@ -14,15 +14,20 @@ import { createClient } from '@/lib/supabase/client';
 import {
   EMPTY_PROGRESS,
   getSettings,
+  type AvatarConfig,
   type Measurements,
   type NutritionProfile,
   type ProgressData,
   type ProgressPhoto,
+  type QuestDay,
   type RoutineLog,
   type SessionLog,
+  type StatId,
   type StrengthTests,
+  type TrainingPlan,
   type UserSettings,
 } from '@/lib/types';
+import { applyQuestProgress, withQuestDay } from '@/lib/program/quests';
 import { todayKey } from '@/lib/utils';
 import { withDayStatus } from '@/lib/program/training-stats';
 
@@ -32,7 +37,13 @@ type Updater = (prev: ProgressData) => ProgressData;
 interface ProgressContextValue {
   progress: ProgressData;
   settings: UserSettings;
-  saveStatus: SaveStatus;
+  setPlan: (plan: TrainingPlan) => void;
+  ensureQuestDay: (dateKey: string, day: QuestDay) => void;
+  addQuestProgress: (dateKey: string, questId: string, amount: number | 'complete') => void;
+  allocateStat: (stat: StatId) => void;
+  resetStats: () => void;
+  updateAvatar: (patch: Partial<AvatarConfig>) => void;
+  recordBossAttempt: (arcId: string, score: number, defeated: boolean) => void;
   logSession: (log: SessionLog) => void;
   updateSettings: (patch: Partial<UserSettings>) => void;
   toggleFavoriteExercise: (key: string) => void;
@@ -60,6 +71,13 @@ interface ProgressContextValue {
 }
 
 const ProgressContext = createContext<ProgressContextValue | null>(null);
+/**
+ * Save status lives in its own context: it flips on every save, and keeping it
+ * out of the main value means only the little sync badge re-renders, not every
+ * screen that reads progress.
+ */
+const SaveStatusContext = createContext<SaveStatus>('idle');
+const BACKUP_DEBOUNCE_MS = 400;
 
 const SAVE_DEBOUNCE_MS = 500;
 const RETRY_START_MS = 1000;
@@ -107,6 +125,7 @@ export function ProgressProvider({
   const inFlight = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const backupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryDelay = useRef(RETRY_START_MS);
   const saveRef = useRef<() => Promise<void>>(async () => {});
 
@@ -199,9 +218,11 @@ export function ProgressProvider({
     }
   }, [supabase, userId, writeBackup, clearBackup]);
 
+  const writeBackupRef = useRef(writeBackup);
   useEffect(() => {
     saveRef.current = save;
-  }, [save]);
+    writeBackupRef.current = writeBackup;
+  }, [save, writeBackup]);
 
   const mutate = useCallback(
     (updater: Updater) => {
@@ -210,7 +231,10 @@ export function ProgressProvider({
       latest.current = next;
       setProgress(next);
       pending.current.push(updater);
-      writeBackup();
+      // Serializing the whole document on every tap was a main-thread hitch;
+      // batch it, and flush on hide (below) so nothing is lost.
+      if (backupTimer.current) clearTimeout(backupTimer.current);
+      backupTimer.current = setTimeout(writeBackup, BACKUP_DEBOUNCE_MS);
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => void saveRef.current(), SAVE_DEBOUNCE_MS);
     },
@@ -240,7 +264,14 @@ export function ProgressProvider({
 
   // Flush right away when the page is hidden/closed or we come back online.
   useEffect(() => {
-    const flush = () => void saveRef.current();
+    const flush = () => {
+      if (backupTimer.current && pending.current.length > 0) {
+        clearTimeout(backupTimer.current);
+        backupTimer.current = null;
+        writeBackupRef.current();
+      }
+      void saveRef.current();
+    };
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') flush();
     };
@@ -517,12 +548,70 @@ export function ProgressProvider({
     [mutate]
   );
 
+  const setPlan = useCallback(
+    (plan: TrainingPlan) => {
+      mutate((prev) => ({ ...prev, plan }));
+    },
+    [mutate]
+  );
+
+  const ensureQuestDay = useCallback(
+    (dateKey: string, day: QuestDay) => {
+      mutate((prev) => withQuestDay(prev, dateKey, day));
+    },
+    [mutate]
+  );
+
+  const addQuestProgress = useCallback(
+    (dateKey: string, questId: string, amount: number | 'complete') => {
+      mutate((prev) => applyQuestProgress(prev, dateKey, questId, amount));
+    },
+    [mutate]
+  );
+
+  const allocateStat = useCallback(
+    (stat: StatId) => {
+      mutate((prev) => ({ ...prev, statAlloc: { ...prev.statAlloc, [stat]: (prev.statAlloc[stat] ?? 0) + 1 } }));
+    },
+    [mutate]
+  );
+
+  const resetStats = useCallback(() => {
+    mutate((prev) => (Object.keys(prev.statAlloc).length === 0 ? prev : { ...prev, statAlloc: {} }));
+  }, [mutate]);
+
+  const updateAvatar = useCallback(
+    (patch: Partial<AvatarConfig>) => {
+      mutate((prev) => ({ ...prev, avatar: { ...prev.avatar, ...patch } }));
+    },
+    [mutate]
+  );
+
+  const recordBossAttempt = useCallback(
+    (arcId: string, score: number, defeated: boolean) => {
+      mutate((prev) => {
+        const current = prev.bosses[arcId];
+        const next = { ...current, best: Math.max(current?.best ?? 0, score) };
+        if (defeated && !current?.defeatedOn) next.defeatedOn = todayKey();
+        return { ...prev, bosses: { ...prev.bosses, [arcId]: next } };
+      });
+    },
+    [mutate]
+  );
+
   const settings = useMemo(() => getSettings(progress), [progress]);
 
-  const value: ProgressContextValue = {
+  // Memoized so consumers only re-render when progress actually changes.
+  const value = useMemo<ProgressContextValue>(() => ({
     progress,
     settings,
-    saveStatus,
+    setPlan,
+    ensureQuestDay,
+    addQuestProgress,
+    allocateStat,
+    resetStats,
+    updateAvatar,
+    recordBossAttempt,
     logSession,
     updateSettings,
     toggleFavoriteExercise,
@@ -547,9 +636,24 @@ export function ProgressProvider({
     toggleShoppingItem,
     completeOnboarding,
     markMilestoneCelebrated,
-  };
+  }), [
+    progress, settings, setPlan, ensureQuestDay, addQuestProgress, allocateStat, resetStats, updateAvatar,
+    recordBossAttempt, logSession, updateSettings, toggleFavoriteExercise, addProtein, updateNutritionProfile,
+    setMealSwap, resetShoppingList, addProgressPhoto, removeProgressPhoto, logRoutine, startArc, toggleArcDay,
+    leaveArc, toggleChecklistItem, toggleExerciseCheck, completeAllExercises, setWater, toggleHabitDay,
+    toggleDailyTask, saveMeasurements, recordStrengthTest, toggleShoppingItem, completeOnboarding,
+    markMilestoneCelebrated,
+  ]);
 
-  return <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>;
+  return (
+    <SaveStatusContext.Provider value={saveStatus}>
+      <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>
+    </SaveStatusContext.Provider>
+  );
+}
+
+export function useSaveStatus() {
+  return useContext(SaveStatusContext);
 }
 
 export function useProgress() {

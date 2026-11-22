@@ -46,6 +46,8 @@ export interface WorkoutExercise {
   timeSeconds?: number;
   rest: string;
   notes?: string;
+  /** Set when this exercise replaced another one to respect the person's limitations. */
+  swappedFrom?: string;
 }
 
 export type SplitDay = 'push' | 'pull' | 'legs' | 'core' | 'hiit' | 'recovery' | 'rest';
@@ -168,6 +170,79 @@ export interface ProgressData {
   routineLogs: RoutineLog[];
   /** Training-arc challenges: arcId → progress. */
   arcs: Record<string, ArcProgress>;
+  /** Built by the plan questionnaire (null until the person answers it). */
+  plan: TrainingPlan | null;
+  /** Daily quests for recent days (YYYY-MM-DD → that day's quests), trimmed to ~45 days. */
+  quests: Record<string, QuestDay>;
+  /** Lifetime quest totals — kept separately so trimming old days never loses XP. */
+  questTotals: QuestTotals;
+  /** Stat points the person has spent by hand (earned on level-up). */
+  statAlloc: Partial<Record<StatId, number>>;
+  /** The person's own hero avatar. */
+  avatar: AvatarConfig;
+  /** Arc bosses: arcId → best attempt / win. */
+  bosses: Record<string, BossRecord>;
+}
+
+// ---------------------------------------------------------------------
+// Plan questionnaire
+// ---------------------------------------------------------------------
+
+export type PlanGoal = 'strength' | 'fatLoss' | 'endurance' | 'flexibility' | 'general';
+export type Limitation = 'knees' | 'back' | 'shoulders' | 'wrists' | 'lowImpact';
+export type PlanMinutes = 10 | 20 | 30 | 45;
+
+export interface TrainingPlan {
+  goal: PlanGoal;
+  experience: Difficulty;
+  /** Minutes the person can train on a typical day. */
+  minutes: PlanMinutes;
+  limitations: Limitation[];
+  createdAt: string; // ISO
+}
+
+// ---------------------------------------------------------------------
+// Daily quests, stats and avatar
+// ---------------------------------------------------------------------
+
+export type StatId = 'power' | 'stamina' | 'agility' | 'flexibility' | 'focus';
+
+export type QuestKind = 'reps' | 'seconds' | 'workout' | 'water';
+
+export interface Quest {
+  id: string;
+  kind: QuestKind;
+  /** Exercise for reps / seconds quests. */
+  exerciseKey?: string;
+  target: number;
+  progress: number;
+  done: boolean;
+  /** A gentle comeback quest offered the day after a missed day. */
+  recovery?: boolean;
+}
+
+export interface QuestDay {
+  quests: Quest[];
+  /** Every regular quest finished that day. */
+  cleared: boolean;
+}
+
+export interface QuestTotals {
+  done: number;
+  clears: number;
+  recoveries: number;
+}
+
+export interface AvatarConfig {
+  skin: string;
+  hair: string;
+  hairColor: string;
+  eyes: string;
+  outfit: string;
+  outfitColor: string;
+  headgear: string;
+  aura: string;
+  accessory: string;
 }
 
 // ---------------------------------------------------------------------
@@ -236,6 +311,14 @@ export interface ArcProgress {
   doneDays: number[];
 }
 
+/** Arc boss record — kept apart from the arc so restarting an arc never loses a win. */
+export interface BossRecord {
+  /** Best damage dealt in any attempt. */
+  best: number;
+  /** Set the first time the boss is beaten. */
+  defeatedOn?: string;
+}
+
 export interface NutritionProfile {
   heightCm?: number;
   age?: number;
@@ -250,6 +333,18 @@ export interface ProgressPhoto {
   /** Object path inside the private `progress-photos` storage bucket. */
   path: string;
 }
+
+export const DEFAULT_AVATAR: AvatarConfig = {
+  skin: 'tone3',
+  hair: 'spiky',
+  hairColor: 'black',
+  eyes: 'amber',
+  outfit: 'gi',
+  outfitColor: 'crimson',
+  headgear: 'none',
+  aura: 'none',
+  accessory: 'none',
+};
 
 export const EMPTY_PROGRESS: ProgressData = {
   completedDays: [],
@@ -274,6 +369,12 @@ export const EMPTY_PROGRESS: ProgressData = {
   progressPhotos: [],
   routineLogs: [],
   arcs: {},
+  plan: null,
+  quests: {},
+  questTotals: { done: 0, clears: 0, recoveries: 0 },
+  statAlloc: {},
+  avatar: DEFAULT_AVATAR,
+  bosses: {},
 };
 
 export interface Profile {

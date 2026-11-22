@@ -28,7 +28,8 @@
     "more": "More",
     "signOut": "Sign Out",
     "signingOut": "Signing out…",
-    "athlete": "Athlete"
+    "athlete": "Athlete",
+    "hero": "Hero"
   },
   "belts": {
     "white": "White Belt",
@@ -159,7 +160,10 @@
     "communityTitle": "The dojo is training",
     "communityBody": "Share today's win, ask for advice or just say hi.",
     "communityButton": "Open Community",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "planPromptTitle": "Build your training plan",
+    "planPromptBody": "Answer 5 quick questions — goal, level, gear, time and any injuries — and we'll tune your quests and workouts.",
+    "planPromptCta": "Build my plan"
   },
   "player": {
     "work": "Work",
@@ -264,8 +268,16 @@
       "finished": "Arc complete!",
       "finishedBody": "You finished {name}. Start it again or pick a new arc.",
       "restart": "Start again",
-      "loggedToast": "Arc day {day} complete! +{xp} XP"
-    }
+      "loggedToast": "Arc day {day} complete! +{xp} XP",
+      "risky": "Not ideal with your injuries — go gently or pick another arc.",
+      "bossLabel": "Arc boss",
+      "bossBeaten": "Defeated! Rematch any time.",
+      "bossReady": "Ready to fight — {hp} HP",
+      "bossLocked": "Unlocks after {need} training days ({done}/{need})",
+      "fight": "Fight",
+      "rematch": "Rematch"
+    },
+    "forYou": "For you"
   },
   "equipment": {
     "none": "No equipment",
@@ -373,7 +385,8 @@
       "beginners": "Beginners",
       "gym-lifting": "Gym & Lifting",
       "international": "International"
-    }
+    },
+    "tabRaid": "Raid"
   },
   "settings": {
     "title": "Settings",
@@ -495,5 +508,326 @@
     "body": "Opens full-screen like an app, starts faster and works offline.",
     "iosBody": "Tap Share, then Add to Home Screen. It opens full-screen like an app and works offline.",
     "button": "Install App"
+  },
+  "quests": {
+    "title": "Daily Quests",
+    "resetsIn": "Resets in {h}h {m}m",
+    "startTimer": "Start timer",
+    "workout": "Finish any workout",
+    "water": "Drink {n} glasses of water",
+    "reps": "{n} × {name}",
+    "seconds": "{name} — {n}s total",
+    "recoveryNote": "Recovery quest: missed yesterday? Finish this to keep your quest streak alive. No penalties, ever.",
+    "markDone": "Done",
+    "addGlass": "+1 glass",
+    "goTrain": "Train",
+    "streak": "{n}-day streak",
+    "cleared": "All quests cleared! +{xp} XP bonus",
+    "clearHint": "Clear every quest today for a +{xp} XP bonus."
+  },
+  "plan": {
+    "title": "Your training plan",
+    "save": "Save plan",
+    "saved": "Plan saved — your quests and picks are tuned to it.",
+    "goalTitle": "What's your main goal?",
+    "goalBody": "We'll pick quests and workouts that move you toward it.",
+    "experienceTitle": "How experienced are you?",
+    "experienceBody": "Be honest — targets scale with you as you level up.",
+    "equipmentTitle": "What can you train with?",
+    "equipmentBody": "Pick what you have access to most days.",
+    "timeTitle": "How much time per day?",
+    "timeBody": "Short days still count. Consistency beats length.",
+    "limitsTitle": "Any injuries or sore spots?",
+    "limitsBody": "We'll swap out moves that load these areas for gentler ones.",
+    "goals": {
+      "strength": "Get stronger",
+      "strengthSub": "Push-ups, squats, lifting — build power",
+      "fatLoss": "Lose fat",
+      "fatLossSub": "More cardio and full-body circuits",
+      "endurance": "Build stamina",
+      "enduranceSub": "Last longer, recover faster",
+      "flexibility": "Move better",
+      "flexibilitySub": "Mobility, stretching and posture",
+      "general": "All-round fitness",
+      "generalSub": "A bit of everything"
+    },
+    "levels": {
+      "beginner": "Beginner",
+      "beginnerSub": "New to training, or coming back after a long break",
+      "intermediate": "Intermediate",
+      "intermediateSub": "I train sometimes and know the basics",
+      "advanced": "Advanced",
+      "advancedSub": "I train regularly and want a challenge"
+    },
+    "modeSub": {
+      "home": "Bodyweight only — no equipment needed",
+      "dumbbells": "Dumbbells or kettlebells at home",
+      "gym": "Full gym: barbells, cables and machines"
+    },
+    "minutesPerDay": "minutes / day",
+    "minutesValue": "{n} min / day",
+    "limitations": {
+      "knees": "Knees",
+      "back": "Lower back",
+      "shoulders": "Shoulders",
+      "wrists": "Wrists",
+      "lowImpact": "Low-impact only",
+      "none": "None"
+    },
+    "medical": "I have a medical condition, am pregnant, or was told to avoid intense exercise",
+    "medicalSub": "We'll keep everything low-impact (no jumping).",
+    "doctorNote": "This app can't diagnose or treat injuries. If something hurts, stop — and check with a doctor or physiotherapist before training through pain.",
+    "summaryTitle": "Here's your plan",
+    "summaryBody": "You can rebuild it any time from your Hero page.",
+    "summaryGoal": "Goal",
+    "summaryLevel": "Level",
+    "summaryGear": "Gear",
+    "summaryTime": "Time",
+    "summaryRank": "You start at Rank E. Daily quests, workouts and Arc bosses raise your rank all the way to SSS.",
+    "summaryCoach": "{name} is a great coach for this goal.",
+    "summaryPicks": "Workouts picked for you",
+    "summarySafe": "Moves that load your sore spots are swapped for safer ones automatically.",
+    "swapNote": "Safer swap for {name}",
+    "summaryRankNow": "You're Rank {rank}. Daily quests, workouts and Arc bosses raise your rank all the way to SSS."
+  },
+  "hero": {
+    "title": "Hero",
+    "subtitle": "Your avatar, rank, stats and quests.",
+    "avatarLabel": "Your hero avatar",
+    "statusWindow": "Status",
+    "defaultName": "Hero",
+    "levelN": "Level {n}",
+    "rankN": "Rank {rank}",
+    "power": "Power {n}",
+    "xpLine": "{xp} XP · {next} to next level",
+    "nextRank": "Rank {rank} at level {level}",
+    "editAvatar": "Edit avatar",
+    "partsUnlocked": "{n}/{total} parts unlocked",
+    "statsTitle": "Stats",
+    "freePoints": "{n} free points",
+    "statsBody": "Stats grow from what you train. Each level-up also gives 3 points to spend.",
+    "stats": {
+      "power": "Power",
+      "stamina": "Stamina",
+      "agility": "Agility",
+      "flexibility": "Flexibility",
+      "focus": "Focus"
+    },
+    "addPoint": "Add a point to {stat}",
+    "resetPoints": "Refund spent points",
+    "ranksTitle": "Rank ladder",
+    "ranksBody": "Ranks run alongside your belt. Level up to climb from E to SSS.",
+    "levelShort": "Lv {n}",
+    "questStreak": "Quest streak: {n} days",
+    "planTitle": "Training plan",
+    "planSafe": "Injury-friendly swaps on for: {list}",
+    "noPlan": "No plan yet. Answer 5 quick questions to tune your quests and workouts.",
+    "rebuildPlan": "Rebuild plan",
+    "buildPlan": "Build my plan",
+    "bossesTitle": "Arc bosses",
+    "bossesBody": "Each 30-day Arc ends in a boss fight. Beat them for XP and rare gear.",
+    "defeated": "Defeated",
+    "bestHit": "Best: {n}",
+    "notFought": "Not fought",
+    "toArcs": "Go to Training Arcs"
+  },
+  "avatar": {
+    "title": "Edit avatar",
+    "save": "Save",
+    "cancel": "Cancel",
+    "slots": {
+      "hair": "Hair",
+      "hairColor": "Hair color",
+      "eyes": "Eyes",
+      "skin": "Skin",
+      "outfit": "Outfit",
+      "outfitColor": "Outfit color",
+      "headgear": "Headgear",
+      "aura": "Aura",
+      "accessory": "Accessory"
+    },
+    "unlock": {
+      "level": "Level {n}",
+      "rank": "Rank {rank}",
+      "bosses": "Beat {n} boss(es)",
+      "quests": "{n} quests",
+      "clears": "Clear all quests {n} days"
+    },
+    "items": {
+      "tone1": "Tone 1",
+      "tone2": "Tone 2",
+      "tone3": "Tone 3",
+      "tone4": "Tone 4",
+      "tone5": "Tone 5",
+      "tone6": "Tone 6",
+      "amber": "Amber",
+      "brown": "Brown",
+      "blue": "Blue",
+      "green": "Green",
+      "violet": "Violet",
+      "crimson": "Crimson",
+      "gold": "Gold",
+      "spiky": "Spiky",
+      "short": "Short",
+      "long": "Long",
+      "ponytail": "Ponytail",
+      "bun": "Bun",
+      "buzz": "Buzz cut",
+      "wild": "Wild",
+      "twin": "Twin tails",
+      "crest": "Crest",
+      "black": "Black",
+      "blonde": "Blonde",
+      "ginger": "Ginger",
+      "pink": "Pink",
+      "silver": "Silver",
+      "flame": "Flame",
+      "gi": "Dojo gi",
+      "tank": "Tank top",
+      "hoodie": "Hoodie",
+      "track": "Track jacket",
+      "raider": "Raider gear",
+      "battle": "Battle gi",
+      "champion": "Champion gi",
+      "midnight": "Midnight",
+      "snow": "Snow",
+      "forest": "Forest",
+      "ocean": "Ocean",
+      "none": "None",
+      "cap": "Cap",
+      "band": "Headband",
+      "neko": "Cat ears",
+      "horns": "Horns",
+      "crown": "Crown",
+      "ember": "Ember",
+      "sakura": "Sakura",
+      "frost": "Frost",
+      "storm": "Storm",
+      "void": "Void",
+      "solar": "Solar",
+      "towel": "Towel",
+      "headphones": "Headphones",
+      "scarf": "Scarf",
+      "dumbbell": "Dumbbell",
+      "medal": "Medal"
+    }
+  },
+  "bosses": {
+    "ironGolem": {
+      "name": "Iron Golem",
+      "title": "Guardian of the Push-up Arc"
+    },
+    "stoneTitan": {
+      "name": "Stone Titan",
+      "title": "Guardian of the Squat Arc"
+    },
+    "frostWraith": {
+      "name": "Frost Wraith",
+      "title": "Guardian of the Plank Arc"
+    },
+    "thunderImp": {
+      "name": "Thunder Imp",
+      "title": "Guardian of the Jumping Jack Arc"
+    },
+    "cliffSerpent": {
+      "name": "Cliff Serpent",
+      "title": "Guardian of the Grip Arc"
+    },
+    "lotusSpirit": {
+      "name": "Lotus Spirit",
+      "title": "Guardian of the Flexibility Arc"
+    },
+    "emberDrake": {
+      "name": "Ember Drake",
+      "title": "A dragon of living coals"
+    },
+    "tidalLeviathan": {
+      "name": "Tidal Leviathan",
+      "title": "It rises with the tide"
+    },
+    "nightRonin": {
+      "name": "Night Ronin",
+      "title": "A blade that never rests"
+    },
+    "boneKing": {
+      "name": "Bone King",
+      "title": "Ruler of the old catacombs"
+    },
+    "moonFox": {
+      "name": "Moon Fox",
+      "title": "Nine tails of silver light"
+    },
+    "stormRoc": {
+      "name": "Storm Roc",
+      "title": "Its wings bring thunder"
+    },
+    "jadeColossus": {
+      "name": "Jade Colossus",
+      "title": "Carved from a mountain"
+    },
+    "frostQueen": {
+      "name": "Frost Queen",
+      "title": "Winter in human form"
+    }
+  },
+  "boss": {
+    "label": "Boss fight",
+    "close": "Close",
+    "intro": "This one has {n} HP. Every {unit} you do is a hit. Ready?",
+    "unitSeconds": "second",
+    "unitReps": "rep",
+    "wonToast": "Boss defeated! +{xp} XP and new gear unlocked.",
+    "lostBubble": "So close! Rest up — you'll get it next time.",
+    "hp": "HP",
+    "rulesReps": "Do {n} {name} within {s} minutes. Tap the big button once for every rep.",
+    "rulesHold": "Hold {name} for {n} seconds in total within {s} minutes. Press Hold while you hold, pause whenever you need.",
+    "fight": "Fight!",
+    "hold": "Hold",
+    "holding": "Holding…",
+    "tapPerRep": "tap per rep",
+    "dealt": "Damage dealt: {n}",
+    "victory": "Victory!",
+    "retreat": "Time's up",
+    "wonBody": "You dealt {n} damage. Legendary.",
+    "lostBody": "You dealt {n} of {hp}. Your best attempt is saved.",
+    "again": "Try again",
+    "rematch": "Rematch"
+  },
+  "raid": {
+    "pickTitle": "Join a guild",
+    "pickBody": "Every week the whole dojo fights one raid boss together. Your workouts, quests and boss wins deal damage for your guild.",
+    "guilds": {
+      "crimson": {
+        "name": "Crimson Flame",
+        "motto": "Burn brighter every rep"
+      },
+      "azure": {
+        "name": "Azure Tide",
+        "motto": "Steady waves wear down stone"
+      },
+      "golden": {
+        "name": "Golden Storm",
+        "motto": "Strike fast, strike together"
+      },
+      "jade": {
+        "name": "Jade Grove",
+        "motto": "Grow a little stronger every day"
+      }
+    },
+    "notSetup": "Raids need a database update",
+    "notSetupBody": "Run the latest supabase/schema.sql (section 8) in your Supabase project to turn on guilds and raids.",
+    "weeklyBoss": "This week's raid boss",
+    "resetsIn": "New boss in {d}d {h}h",
+    "refresh": "Refresh",
+    "defeated": "Defeated!",
+    "hp": "Raid HP",
+    "yourDamage": "You've dealt {n} damage",
+    "howTo": "Workouts, quests and boss wins deal damage automatically.",
+    "guildStandings": "Guild standings",
+    "members": "{n} hunters",
+    "switchGuild": "Switch guild",
+    "topHunters": "Top hunters this week",
+    "noHits": "No hits yet this week — be the first!",
+    "loadError": "Could not load the raid. Check your connection."
   }
 }

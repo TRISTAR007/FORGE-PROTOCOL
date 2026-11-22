@@ -37,7 +37,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 sm:items-center sm:p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -65,7 +65,7 @@ export function Modal({
           <button
             onClick={onClose}
             aria-label="Close"
-            className="absolute right-4 top-4 z-10 rounded-xs bg-surface/80 p-1.5 text-ink-muted backdrop-blur transition-colors hover:bg-surface hover:text-ink"
+            className="absolute right-4 top-4 z-10 rounded-xs bg-surface/90 p-1.5 text-ink-muted transition-colors hover:bg-surface hover:text-ink"
           >
             <X size={18} />
           </button>

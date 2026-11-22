@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { CoachAvatar } from '@/components/coach/coach-portrait';
+import { ProfileAvatar } from '@/components/community/profile-avatar';
 import { BeltBadge } from '@/components/community/belt-badge';
 import { getCoach } from '@/lib/coaches';
 import { flagEmoji } from '@/lib/community/countries';
@@ -106,8 +107,6 @@ export function ChatRoom({
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMore, setHasMore] = useState(false);
-  const [text, setText] = useState('');
-  const [sending, setSending] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [actionsFor, setActionsFor] = useState<number | null>(null);
   const [reporting, setReporting] = useState<Message | null>(null);
@@ -178,32 +177,24 @@ export function ChatRoom({
     });
   };
 
-  const send = async () => {
+  /** Returns true when the message went out (so the composer can clear itself). */
+  const send = async (text: string): Promise<boolean> => {
     const cleaned = cleanMessage(text);
-    if (!cleaned.text) return;
+    if (!cleaned.text) return false;
     if (cleaned.text.length > MAX_MESSAGE_LENGTH) {
       toast(t('tooLong'), 'error');
-      return;
+      return false;
     }
-    setSending(true);
     const { data, error } = await sendMessage(supabase, me.id, channel.id, cleaned.text, replyTo?.id ?? null);
-    setSending(false);
     if (error) {
       toast(isRateLimited(error) ? t('slowDown') : t('sendError'), 'error');
-      return;
+      return false;
     }
     if (cleaned.changed) toast(t('filtered'), 'info');
     stickToBottom.current = true;
     if (data) setMessages((prev) => (prev.some((x) => x.id === data.id) ? prev : [...prev, data]));
-    setText('');
     setReplyTo(null);
-  };
-
-  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-      e.preventDefault();
-      void send();
-    }
+    return true;
   };
 
   const byId = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
@@ -240,7 +231,6 @@ export function ChatRoom({
             {visible.length === 0 ? <p className="py-16 text-center text-sm text-ink-faint">{t('empty')}</p> : null}
             {visible.map((m) => {
               const author = profiles.get(m.user_id);
-              const coach = getCoach(author?.avatar_coach);
               const mine = m.user_id === me.id;
               const created = new Date(m.created_at);
               const isToday = created.toDateString() === new Date().toDateString();
@@ -264,7 +254,7 @@ export function ChatRoom({
                     className="shrink-0 self-start"
                     aria-label={author?.username ?? ''}
                   >
-                    <CoachAvatar coach={coach} size={36} />
+                    <ProfileAvatar profile={author ?? { avatar_coach: 'kaito' }} size={36} />
                   </button>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
@@ -389,26 +379,12 @@ export function ChatRoom({
             </button>
           </div>
         ) : null}
-        <div className="flex items-end gap-2">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder={t('messagePlaceholder', { channel: channelName(channel) })}
-            rows={1}
-            maxLength={MAX_MESSAGE_LENGTH + 50}
-            disabled={channel.locked}
-            className="max-h-32 min-h-[44px] flex-1 resize-none rounded-md border border-line bg-bg px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-forge focus:outline-none disabled:opacity-50"
-          />
-          <Button onClick={() => void send()} loading={sending} disabled={!text.trim() || channel.locked} aria-label={t('send')} className="h-11 px-4">
-            {!sending ? <Send size={16} className="rtl:-scale-x-100" /> : null}
-          </Button>
-        </div>
-        {text.length > MAX_MESSAGE_LENGTH * 0.8 ? (
-          <p className={cn('mt-1 text-end font-mono text-[10px]', text.length > MAX_MESSAGE_LENGTH ? 'text-danger' : 'text-ink-faint')}>
-            {text.length}/{MAX_MESSAGE_LENGTH}
-          </p>
-        ) : null}
+        <Composer
+          placeholder={t('messagePlaceholder', { channel: channelName(channel) })}
+          disabled={channel.locked}
+          sendLabel={t('send')}
+          onSend={send}
+        />
       </div>
 
       <ReportDialog
@@ -421,5 +397,64 @@ export function ChatRoom({
         }}
       />
     </div>
+  );
+}
+
+/**
+ * The message box. Keeps its own text state so typing re-renders only this
+ * little component — not the whole message list on every keystroke.
+ */
+function Composer({
+  placeholder,
+  disabled,
+  sendLabel,
+  onSend,
+}: {
+  placeholder: string;
+  disabled: boolean;
+  sendLabel: string;
+  onSend: (text: string) => Promise<boolean>;
+}) {
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const submit = async () => {
+    if (sending || !text.trim()) return;
+    setSending(true);
+    const ok = await onSend(text);
+    setSending(false);
+    if (ok) setText('');
+  };
+
+  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      void submit();
+    }
+  };
+
+  return (
+    <>
+      <div className="flex items-end gap-2">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder={placeholder}
+          rows={1}
+          maxLength={MAX_MESSAGE_LENGTH + 50}
+          disabled={disabled}
+          className="max-h-32 min-h-[44px] flex-1 resize-none rounded-md border border-line bg-bg px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-forge focus:outline-none disabled:opacity-50"
+        />
+        <Button onClick={() => void submit()} loading={sending} disabled={!text.trim() || disabled} aria-label={sendLabel} className="h-11 px-4">
+          {!sending ? <Send size={16} className="rtl:-scale-x-100" /> : null}
+        </Button>
+      </div>
+      {text.length > MAX_MESSAGE_LENGTH * 0.8 ? (
+        <p className={cn('mt-1 text-end font-mono text-[10px]', text.length > MAX_MESSAGE_LENGTH ? 'text-danger' : 'text-ink-faint')}>
+          {text.length}/{MAX_MESSAGE_LENGTH}
+        </p>
+      ) : null}
+    </>
   );
 }

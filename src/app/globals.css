@@ -13,7 +13,21 @@
 
   body {
     @apply bg-bg text-ink font-body antialiased;
-    /* Night-dojo backdrop: soft violet + pink glows over a faint manga screentone. */
+  }
+
+  /*
+   * Night-dojo backdrop: soft violet + pink glows over a faint manga screentone.
+   * Painted once on its own fixed, GPU-composited layer. (`background-attachment:
+   * fixed` on <body> forced a full repaint on every scroll frame — a big source of
+   * scroll jank on phones.)
+   */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    transform: translateZ(0);
     background-image:
       radial-gradient(1200px 600px at 85% -10%, rgba(139, 92, 246, 0.16), transparent 60%),
       radial-gradient(900px 500px at -10% 110%, rgba(255, 77, 148, 0.1), transparent 60%),
@@ -22,7 +36,6 @@
       auto,
       auto,
       18px 18px;
-    background-attachment: fixed, fixed, scroll;
   }
 
   ::selection {

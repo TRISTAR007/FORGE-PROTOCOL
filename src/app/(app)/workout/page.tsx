@@ -21,6 +21,7 @@ import { useLocalStorageValue } from '@/hooks/use-local-storage';
 import { useCommunityShare } from '@/hooks/use-community-share';
 import { useProgress } from '@/context/progress-context';
 import { useToast } from '@/components/ui/toast';
+import { useRaidHit } from '@/hooks/use-raid-hit';
 import { getExercise } from '@/lib/program/exercises';
 import { XP } from '@/lib/program/levels';
 import { primeAudio } from '@/lib/session-cues';
@@ -36,6 +37,7 @@ function WorkoutPageInner() {
   const { progress, settings, completeAllExercises, logSession } = useProgress();
   const { toast } = useToast();
   const share = useCommunityShare();
+  const hit = useRaidHit();
 
   const dayParam = Number(searchParams.get('day'));
   const dayNumber = clamp(Number.isFinite(dayParam) && dayParam > 0 ? dayParam : todayDayNumber, 1, totalDays);
@@ -110,6 +112,7 @@ function WorkoutPageInner() {
                 completeAllExercises(dayNumber, workout.exercises.length);
                 logSession({ dayNumber, date: result.date, durationSec: result.durationSec, reps: result.reps, keys: result.keys });
                 toast(t('logged', { day: dayNumber }));
+                hit(XP.programDay + XP.guidedBonus);
               }}
             />,
             document.body

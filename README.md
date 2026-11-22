@@ -21,6 +21,14 @@ A 365-day home and gym training app guided by an original cast of anime-style co
 - Six 30-day **Training Arcs** (push-ups, squats, plank, jumping jacks, grip, flexibility) that grow every day.
 - A full-screen guided player: countdown ring, coach portrait + speech bubbles + voice, sound and haptic cues, rep logging, previous / +15s / pause, keyboard shortcuts, resume after interruption, personal records, "ready to progress" tips, confetti, and sharing to the community.
 
+**RPG layer**
+- **Daily quests** — four small goals a day (finish a workout, a strength quest, a goal-flavored quest, water) that reset at local midnight, with XP, an all-clear bonus and a quest streak. Miss a day and you get a gentle **recovery quest** instead of a penalty.
+- **Ranks E → SSS** alongside the belts, and five **stats** (Power, Stamina, Agility, Flexibility, Focus) that grow from what you actually train, plus 3 free points per level to spend.
+- **Plan questionnaire** — goal, experience, gear, minutes per day and sore spots. It tunes quest targets and recommended workouts, and **swaps exercises that load an injured area** (knees, lower back, shoulders, wrists, or low-impact only) for gentler ones, with a clear "see a professional" note.
+- **Arc bosses** — each 30-day Arc ends in a timed boss fight (tap per rep, or hold-to-damage for planks and hangs) that unlocks after 20 training days.
+- **Guild raids** — join one of four guilds; every week the whole community fights one raid boss together, and workouts, quests and boss wins deal damage automatically (clamped and rate-limited on the server).
+- **Hero avatar** — an original chibi avatar drawn in SVG (no image downloads) with 64 parts that unlock through levels, ranks, quests and bosses. It shows in the top bar, the Hero page and chat.
+
 **Progress & motivation** — XP for everything you log, levels and belts (White Belt → Legend), a 365-day heatmap, 26 badges, personal bests, measurement and strength charts, private progress photos with a before/after slider, missed-day recovery, and a shareable progress card.
 
 **Nutrition** — calorie and macro targets from your own stats, a protein tracker, swappable meals and a weekly shopping list, with meal plans for Global, West Africa, South Asia, East & Southeast Asia, Latin America and the Middle East & North Africa.
@@ -51,6 +59,7 @@ A 365-day home and gym training app guided by an original cast of anime-style co
    3. the private **`progress-photos`** storage bucket
    4. **`delete_own_account()`** for *Settings → Delete account*
    5. the **community**: `community_profiles`, `channels` (8 starter channels), `messages`, `message_reports`, `user_blocks`, `community_moderators`, `community_bans`, rate limiting and Realtime for live chat
+   6. **guilds, hero avatars and weekly raids** (section 8): `guild` and `avatar` columns, `raid_hits`, and the `raid_hit()` / `raid_summary()` functions
 
 The file is safe to re-run any time (`if not exists`, `on conflict do nothing`, `drop policy if exists`). **Upgrading an existing project? Run it again** — the new sections are added without touching existing data.
 
@@ -152,6 +161,7 @@ The coach portraits were AI-generated in the Figma file **"Level Up Dojo — Coa
 ## Development notes
 
 - `npm run build` runs the TypeScript check and a full production build; `npx tsc --noEmit`, `npm run lint` and `npm run check:i18n` are quicker checks.
+- Performance: the page backdrop is one fixed layer (no `background-attachment: fixed` repaints on scroll), there are no `backdrop-filter` blurs or blurred animated glows, the progress context is memoized with save status in its own context, derived stats are computed once per change and shared, typing in chat only re-renders the message box, and the middleware checks sessions locally with `getClaims()`.
 - The offline service worker (`public/sw.js`) only registers in production builds. Bump `VERSION` in it when you change caching rules.
 - App icons, the manifest, `robots.txt`, `sitemap.xml` and the social image are generated from `src/app/`.
 

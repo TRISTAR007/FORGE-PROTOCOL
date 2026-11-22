@@ -45,8 +45,13 @@ export function CoachPortrait({
       {aura ? (
         <div
           aria-hidden
-          className={cn('absolute -inset-[14%] rounded-full blur-2xl', mood === 'still' ? 'opacity-60' : 'animate-auraPulse')}
-          style={{ background: `radial-gradient(circle, ${coach.colors[0]}88 0%, ${coach.colors[1]}33 55%, transparent 72%)` }}
+          // No CSS blur filter here: blurring an element that animates forces a costly
+          // re-rasterize every frame. The soft radial gradient gives the same glow and
+          // the animation only touches opacity/transform, which stay on the GPU.
+          className={cn('absolute -inset-[22%] rounded-full', mood === 'still' ? 'opacity-60' : 'animate-auraPulse')}
+          style={{
+            background: `radial-gradient(circle, ${coach.colors[0]}77 0%, ${coach.colors[1]}2e 38%, transparent 68%)`,
+          }}
         />
       ) : null}
       <div className={cn('relative h-full w-full', MOOD_CLASS[mood])}>

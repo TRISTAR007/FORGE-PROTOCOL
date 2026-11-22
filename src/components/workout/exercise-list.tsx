@@ -1,10 +1,11 @@
 'use client';
 
 import Image from 'next/image';
-import { Check, Dumbbell, Info } from 'lucide-react';
+import { Check, Dumbbell, Info, ShieldCheck } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { useProgress } from '@/context/progress-context';
-import { getExercise } from '@/lib/program/exercises';
+import { exerciseName, getExercise } from '@/lib/program/exercises';
 import type { WorkoutExercise } from '@/lib/types';
 
 export function ExerciseList({
@@ -64,6 +65,7 @@ export function ExerciseList({
               <p className="truncate font-mono text-xs text-ink-faint">
                 {slot.sets} × {slot.reps} · rest {slot.rest}
               </p>
+              {slot.swappedFrom ? <SwapNote from={exerciseName(slot.swappedFrom)} /> : null}
             </button>
 
             <button
@@ -77,5 +79,15 @@ export function ExerciseList({
         );
       })}
     </div>
+  );
+}
+
+/** "Safer swap for Jump Squat" — shown when the plan's injury check replaced a move. */
+function SwapNote({ from }: { from: string }) {
+  const t = useTranslations('plan');
+  return (
+    <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-aqua">
+      <ShieldCheck size={11} className="shrink-0" /> {t('swapNote', { name: from })}
+    </p>
   );
 }

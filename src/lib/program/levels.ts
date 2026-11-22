@@ -12,6 +12,10 @@ export const XP = {
   measurement: 20,
   strengthTest: 30,
   photo: 20,
+  quest: 20,
+  questClear: 40,
+  recoveryQuest: 30,
+  boss: 150,
 };
 
 export function computeXp(progress: ProgressData, trainedDays: Set<number>): number {
@@ -19,6 +23,8 @@ export function computeXp(progress: ProgressData, trainedDays: Set<number>): num
   const dailyTasks = Object.values(progress.dailyTasks).reduce((sum, ids) => sum + ids.length, 0);
   const waterDays = Object.values(progress.waterIntake).filter((n) => n >= waterGoal).length;
   const arcDays = Object.values(progress.arcs).reduce((sum, a) => sum + a.doneDays.length, 0);
+  const bosses = Object.values(progress.bosses ?? {}).filter((b) => b.defeatedOn).length;
+  const quests = progress.questTotals ?? { done: 0, clears: 0, recoveries: 0 };
 
   return (
     trainedDays.size * XP.programDay +
@@ -29,7 +35,11 @@ export function computeXp(progress: ProgressData, trainedDays: Set<number>): num
     waterDays * XP.waterGoal +
     progress.measurementHistory.length * XP.measurement +
     progress.strengthHistory.length * XP.strengthTest +
-    progress.progressPhotos.length * XP.photo
+    progress.progressPhotos.length * XP.photo +
+    quests.done * XP.quest +
+    quests.clears * XP.questClear +
+    quests.recoveries * XP.recoveryQuest +
+    bosses * XP.boss
   );
 }
 
@@ -74,10 +84,42 @@ export function beltForLevel(level: number): Belt {
   return belt;
 }
 
+/**
+ * Hunter-style rank ladder that runs alongside the belts: E → SSS.
+ * Original names/colors — the letter grades are a common gaming convention.
+ */
+export interface Rank {
+  id: 'E' | 'D' | 'C' | 'B' | 'A' | 'S' | 'SS' | 'SSS';
+  minLevel: number;
+  color: string;
+}
+
+export const RANKS: Rank[] = [
+  { id: 'E', minLevel: 1, color: '#9CA3AF' },
+  { id: 'D', minLevel: 5, color: '#4ADE80' },
+  { id: 'C', minLevel: 10, color: '#38BDF8' },
+  { id: 'B', minLevel: 15, color: '#818CF8' },
+  { id: 'A', minLevel: 20, color: '#C084FC' },
+  { id: 'S', minLevel: 28, color: '#FF4D94' },
+  { id: 'SS', minLevel: 36, color: '#FF9A3D' },
+  { id: 'SSS', minLevel: 45, color: '#FFC94A' },
+];
+
+export function rankForLevel(level: number): Rank {
+  let rank = RANKS[0];
+  for (const r of RANKS) if (level >= r.minLevel) rank = r;
+  return rank;
+}
+
+export function nextRank(level: number): Rank | null {
+  return RANKS.find((r) => r.minLevel > level) ?? null;
+}
+
 export interface LevelInfo {
   xp: number;
   level: number;
   belt: Belt;
+  rank: Rank;
   /** XP gathered within the current level, and the size of the current level. */
   intoLevel: number;
   levelSpan: number;
@@ -92,6 +134,7 @@ export function levelInfo(xp: number): LevelInfo {
     xp,
     level,
     belt: beltForLevel(level),
+    rank: rankForLevel(level),
     intoLevel: xp - base,
     levelSpan: next - base,
     toNext: next - xp,

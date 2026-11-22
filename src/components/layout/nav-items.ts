@@ -7,6 +7,7 @@ import {
   MessagesSquare,
   ScrollText,
   Settings,
+  Shield,
   Sparkles,
   UtensilsCrossed,
   Zap,
@@ -15,7 +16,7 @@ import {
 export interface NavItem {
   href: string;
   /** Message key under `nav.` */
-  key: 'dashboard' | 'workout' | 'train' | 'community' | 'exercises' | 'nutrition' | 'progress' | 'coaches' | 'resources' | 'settings';
+  key: 'dashboard' | 'workout' | 'train' | 'hero' | 'community' | 'exercises' | 'nutrition' | 'progress' | 'coaches' | 'resources' | 'settings';
   icon: LucideIcon;
 }
 
@@ -24,6 +25,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/workout', key: 'workout', icon: Dumbbell },
   { href: '/train', key: 'train', icon: Zap },
   { href: '/community', key: 'community', icon: MessagesSquare },
+  { href: '/hero', key: 'hero', icon: Shield },
   { href: '/exercises', key: 'exercises', icon: BookOpen },
   { href: '/progress', key: 'progress', icon: LineChart },
   { href: '/nutrition', key: 'nutrition', icon: UtensilsCrossed },

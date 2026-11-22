@@ -8,16 +8,16 @@ import { Button } from '@/components/ui/button';
 import { CoachAvatar } from '@/components/coach/coach-portrait';
 import { useProgress } from '@/context/progress-context';
 import { getCoach } from '@/lib/coaches';
-import { ROUTINES } from '@/lib/program/routines';
+import { recommendRoutines } from '@/lib/program/plan';
 
 /** Three short no-equipment workouts (rotating daily) + a nudge into the community. */
 export function QuickPicks({ seed }: { seed: number }) {
   const t = useTranslations('dashboard');
   const tc = useTranslations('common');
-  const { settings } = useProgress();
+  const { settings, progress } = useProgress();
 
-  const pool = ROUTINES.filter((r) => r.minutes <= 15 && (r.equipment.length === 0 || settings.trainingMode !== 'home'));
-  const picks = Array.from({ length: Math.min(3, pool.length) }, (_, i) => pool[(seed * 3 + i) % pool.length]);
+  // Matched to the plan questionnaire (goal, time, level, gear, injuries) when there is one.
+  const picks = recommendRoutines(progress.plan, settings.trainingMode, 3, seed);
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.6fr,1fr]">

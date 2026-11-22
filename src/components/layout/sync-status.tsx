@@ -1,11 +1,11 @@
 'use client';
 
 import { Cloud, CloudOff, Loader2 } from 'lucide-react';
-import { useProgress } from '@/context/progress-context';
+import { useSaveStatus } from '@/context/progress-context';
 import { cn } from '@/lib/utils';
 
 export function SyncStatus({ className }: { className?: string }) {
-  const { saveStatus } = useProgress();
+  const saveStatus = useSaveStatus();
 
   if (saveStatus === 'idle') return null;
 

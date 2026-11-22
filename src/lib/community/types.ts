@@ -9,6 +9,9 @@ export interface CommunityProfile {
   xp: number;
   level: number;
   created_at: string;
+  /** Added by schema section 8 — absent until that SQL has been run. */
+  guild?: string | null;
+  avatar?: unknown;
 }
 
 export interface Channel {

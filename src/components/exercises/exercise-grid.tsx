@@ -202,7 +202,7 @@ export function ExerciseGrid({ onSelect }: { onSelect: (exercise: Exercise) => v
                   aria-label={saved ? `Remove ${exercise.name} from saved` : `Save ${exercise.name}`}
                   aria-pressed={saved}
                   className={cn(
-                    'absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur transition-colors',
+                    'absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full transition-colors',
                     saved ? 'bg-forge text-bg' : 'bg-bg/70 text-ink-muted hover:text-forge'
                   )}
                 >

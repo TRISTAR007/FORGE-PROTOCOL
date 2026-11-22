@@ -3,12 +3,13 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { Crown, Hash, Loader2, MessagesSquare, Pencil, ServerCog, Users } from 'lucide-react';
+import { Crown, Hash, Loader2, MessagesSquare, Pencil, ServerCog, Swords, Users } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/ui/toast';
-import { CoachAvatar, CoachPortrait } from '@/components/coach/coach-portrait';
+import { ProfileAvatar } from '@/components/community/profile-avatar';
+import { RaidPanel } from '@/components/community/raid-panel';
 import { BeltBadge } from '@/components/community/belt-badge';
 import { ChatRoom, useChannelName } from '@/components/community/chat-room';
 import { ProfileForm, ProfileSetup } from '@/components/community/profile-setup';
@@ -16,7 +17,6 @@ import { useAuth } from '@/context/auth-context';
 import { useProgress } from '@/context/progress-context';
 import { useTrainingStats } from '@/hooks/use-training-stats';
 import { createClient } from '@/lib/supabase/client';
-import { getCoach } from '@/lib/coaches';
 import { countryName, flagEmoji } from '@/lib/community/countries';
 import {
   blockUser,
@@ -102,7 +102,7 @@ function Leaderboard({ supabase, me }: { supabase: ReturnType<typeof createClien
               >
                 {i + 1}
               </span>
-              <CoachAvatar coach={getCoach(p.avatar_coach)} size={36} />
+              <ProfileAvatar profile={p} size={36} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold">
                   {p.display_name || p.username} {p.country ? flagEmoji(p.country) : ''}{' '}
@@ -126,7 +126,7 @@ function CommunityInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const { settings } = useProgress();
+  const { settings, progress } = useProgress();
   const { level } = useTrainingStats();
   const { toast } = useToast();
   const supabase = useMemo(() => createClient(), []);
@@ -142,7 +142,8 @@ function CommunityInner() {
   const [editing, setEditing] = useState(false);
   const requested = useRef(new Set<string>());
 
-  const tab = searchParams.get('tab') === 'leaderboard' ? 'leaderboard' : 'chat';
+  const tabParam = searchParams.get('tab');
+  const tab = tabParam === 'leaderboard' || tabParam === 'raid' ? tabParam : 'chat';
   const activeSlug = searchParams.get('c');
   const active = channels.find((c) => c.slug === activeSlug) ?? channels[0];
 
@@ -175,16 +176,21 @@ function CommunityInner() {
     };
   }, [supabase, user.id]);
 
-  // Keep the public XP in step with training.
+  // Keep the public XP (and hero avatar, once the database supports it) in step with training.
+  const avatarJson = JSON.stringify(progress.avatar);
   useEffect(() => {
-    if (!me || (me.xp === level.xp && me.level === level.level)) return;
+    if (!me) return;
+    const canStoreAvatar = 'avatar' in me;
+    const avatarChanged = canStoreAvatar && JSON.stringify(me.avatar ?? null) !== avatarJson;
+    if (me.xp === level.xp && me.level === level.level && !avatarChanged) return;
     const id = setTimeout(() => {
-      void syncXp(supabase, me.id, level.xp, level.level).then(({ error }) => {
-        if (!error) setMe((cur) => (cur ? { ...cur, xp: level.xp, level: level.level } : cur));
+      const avatar = canStoreAvatar ? JSON.parse(avatarJson) : undefined;
+      void syncXp(supabase, me.id, level.xp, level.level, avatar).then(({ error }) => {
+        if (!error) setMe((cur) => (cur ? { ...cur, xp: level.xp, level: level.level, ...(canStoreAvatar ? { avatar } : {}) } : cur));
       });
     }, 1500);
     return () => clearTimeout(id);
-  }, [supabase, me, level.xp, level.level]);
+  }, [supabase, me, level.xp, level.level, avatarJson]);
 
   // Live "online now" count.
   useEffect(() => {
@@ -323,19 +329,19 @@ function CommunityInner() {
 
       <div className="flex flex-wrap items-center gap-2">
         <div role="tablist" className="inline-flex rounded-full border border-line bg-surface p-1">
-          {(['chat', 'leaderboard'] as const).map((id) => (
+          {(['chat', 'raid', 'leaderboard'] as const).map((id) => (
             <button
               key={id}
               role="tab"
               aria-selected={tab === id}
-              onClick={() => go({ tab: id === 'chat' ? null : 'leaderboard' })}
+              onClick={() => go({ tab: id === 'chat' ? null : id })}
               className={cn(
                 'flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
                 tab === id ? 'bg-brand-gradient text-white shadow-glow' : 'text-ink-muted hover:text-ink'
               )}
             >
-              {id === 'chat' ? <MessagesSquare size={14} /> : <Crown size={14} />}
-              {id === 'chat' ? t('tabChat') : t('tabLeaderboard')}
+              {id === 'chat' ? <MessagesSquare size={14} /> : id === 'raid' ? <Swords size={14} /> : <Crown size={14} />}
+              {id === 'chat' ? t('tabChat') : id === 'raid' ? t('tabRaid') : t('tabLeaderboard')}
             </button>
           ))}
         </div>
@@ -343,7 +349,7 @@ function CommunityInner() {
           onClick={() => setViewing(me.id)}
           className="ms-auto flex items-center gap-2 rounded-full border border-line bg-surface py-1 pe-3 ps-1 text-sm hover:border-forge/40"
         >
-          <CoachAvatar coach={getCoach(me.avatar_coach)} size={28} />
+          <ProfileAvatar profile={me} size={28} />
           <span className="font-semibold">{me.username}</span>
           <BeltBadge level={me.level} compact />
         </button>
@@ -388,6 +394,17 @@ function CommunityInner() {
                 ) : null}
               </div>
             </>
+          ) : tab === 'raid' ? (
+            <div className="min-h-0 flex-1">
+              <RaidPanel
+                supabase={supabase}
+                me={me}
+                onProfile={(p) => {
+                  setMe(p);
+                  setProfiles((prev) => new Map(prev).set(p.id, p));
+                }}
+              />
+            </div>
           ) : (
             <div className="min-h-0 flex-1">
               <Leaderboard supabase={supabase} me={me} />
@@ -410,7 +427,7 @@ function CommunityInner() {
             <ProfileForm initial={me} defaultCoach={me.avatar_coach} editing onSubmit={onUpdate} />
           ) : (
             <div className="flex flex-col items-center text-center">
-              <CoachPortrait coach={getCoach(viewed.avatar_coach)} size={112} mood="idle" />
+              <ProfileAvatar profile={viewed} size={112} large />
               <p className="mt-4 font-display text-xl tracking-wide">{viewed.display_name || viewed.username}</p>
               <p className="text-sm text-ink-faint">@{viewed.username}</p>
               <div className="mt-2 flex flex-wrap items-center justify-center gap-2">

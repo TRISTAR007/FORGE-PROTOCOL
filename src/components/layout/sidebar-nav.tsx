@@ -10,21 +10,21 @@ import { useAuth } from '@/context/auth-context';
 import { useProgress } from '@/context/progress-context';
 import { useTrainingStats } from '@/hooks/use-training-stats';
 import { BrandMark } from '@/components/brand/brand-mark';
-import { CoachAvatar } from '@/components/coach/coach-portrait';
+import { HeroAvatar } from '@/components/hero/hero-avatar';
 import { BeltBadge } from '@/components/community/belt-badge';
 import { LanguageSwitcher } from '@/components/i18n/language-switcher';
-import { getCoach } from '@/lib/coaches';
+
 import { SyncStatus } from './sync-status';
 
 export function SidebarNav() {
   const pathname = usePathname();
   const t = useTranslations('nav');
   const { profile, signOut, signingOut } = useAuth();
-  const { settings } = useProgress();
+  const { progress } = useProgress();
   const { level } = useTrainingStats();
 
   return (
-    <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 flex-col border-e border-line bg-bg-raised/95 backdrop-blur lg:flex">
+    <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 flex-col border-e border-line bg-bg-raised lg:flex">
       <Link href="/dashboard" className="px-5 py-6">
         <BrandMark size={38} textClassName="text-lg" />
       </Link>
@@ -55,10 +55,10 @@ export function SidebarNav() {
           <LanguageSwitcher compact />
         </div>
         <Link
-          href="/settings"
+          href="/hero"
           className="flex items-center gap-3 rounded-sm px-2 py-2 text-sm transition-colors hover:bg-surface-hover"
         >
-          <CoachAvatar coach={getCoach(settings.coachId)} size={38} />
+          <HeroAvatar avatar={progress.avatar} size={38} ring={level.rank.color} />
           <span className="min-w-0 flex-1">
             <span className="block truncate font-semibold text-ink">{profile?.full_name || t('athlete')}</span>
             <BeltBadge level={level.level} className="mt-0.5" />

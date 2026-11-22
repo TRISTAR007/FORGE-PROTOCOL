@@ -423,6 +423,98 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------
+-- 8. Guilds, hero avatars and weekly community raids
+-- ---------------------------------------------------------------------
+-- Everyone picks one of four guilds. Each week a raid boss appears with a
+-- shared HP pool; every workout, quest and Arc-boss win deals damage.
+-- Damage only goes in through raid_hit(), which clamps each hit, rate-
+-- limits it and caps each person's weekly total, so nobody can inflate it.
+
+alter table public.community_profiles
+  add column if not exists guild text check (guild in ('crimson', 'azure', 'golden', 'jade'));
+alter table public.community_profiles
+  add column if not exists avatar jsonb check (avatar is null or pg_column_size(avatar) <= 1024);
+
+create table if not exists public.raid_hits (
+  id         bigint generated always as identity primary key,
+  user_id    uuid not null references public.community_profiles (id) on delete cascade,
+  week_start date not null,
+  guild      text not null check (guild in ('crimson', 'azure', 'golden', 'jade')),
+  damage     integer not null check (damage between 1 and 300),
+  created_at timestamptz not null default now()
+);
+create index if not exists raid_hits_week_idx on public.raid_hits (week_start, guild);
+create index if not exists raid_hits_user_week_idx on public.raid_hits (user_id, week_start);
+create index if not exists raid_hits_user_time_idx on public.raid_hits (user_id, created_at desc);
+
+alter table public.raid_hits enable row level security;
+-- No insert/update/delete policies: writes only happen through raid_hit().
+drop policy if exists "Members see their own raid hits" on public.raid_hits;
+create policy "Members see their own raid hits"
+  on public.raid_hits for select to authenticated using (auth.uid() = user_id);
+
+create or replace function public.raid_hit(p_damage integer)
+returns integer
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_guild text;
+  v_week date := (date_trunc('week', now() at time zone 'utc'))::date;
+  v_recent integer;
+  v_week_total integer;
+  v_damage integer := least(greatest(coalesce(p_damage, 0), 0), 300);
+begin
+  if v_uid is null or v_damage < 1 then return 0; end if;
+  select guild into v_guild from public.community_profiles where id = v_uid;
+  if v_guild is null or public.is_community_banned(v_uid) then return 0; end if;
+
+  select count(*) into v_recent from public.raid_hits
+    where user_id = v_uid and created_at > now() - interval '1 hour';
+  if v_recent >= 20 then return 0; end if;
+
+  select coalesce(sum(damage), 0) into v_week_total from public.raid_hits
+    where user_id = v_uid and week_start = v_week;
+  v_damage := least(v_damage, greatest(0, 5000 - v_week_total));
+  if v_damage < 1 then return 0; end if;
+
+  insert into public.raid_hits (user_id, week_start, guild, damage) values (v_uid, v_week, v_guild, v_damage);
+  return v_damage;
+end;
+$$;
+
+create or replace function public.raid_summary()
+returns json
+language sql stable security definer set search_path = public
+as $$
+  with w as (select (date_trunc('week', now() at time zone 'utc'))::date as week_start),
+  hits as (select h.* from public.raid_hits h join w on h.week_start = w.week_start),
+  per_user as (select user_id, sum(damage)::int as damage from hits group by user_id),
+  g as (select guild, sum(damage)::int as damage, count(distinct user_id)::int as members from hits group by guild)
+  select json_build_object(
+    'week_start', (select week_start from w),
+    'total', coalesce((select sum(damage) from hits), 0)::int,
+    'hp', greatest(20000, (select count(*) from per_user) * 1500)::int,
+    'mine', coalesce((select damage from per_user where user_id = auth.uid()), 0)::int,
+    'guilds', coalesce((select json_agg(json_build_object('guild', guild, 'damage', damage, 'members', members) order by damage desc) from g), '[]'::json),
+    'top', coalesce((
+      select json_agg(t) from (
+        select p.id as user_id, p.username, p.avatar_coach, p.avatar, p.country, p.guild, u.damage
+        from per_user u join public.community_profiles p on p.id = u.user_id
+        where not public.is_community_banned(p.id)
+        order by u.damage desc
+        limit 10
+      ) t
+    ), '[]'::json)
+  );
+$$;
+
+revoke all on function public.raid_hit(integer) from public, anon;
+revoke all on function public.raid_summary() from public, anon;
+grant execute on function public.raid_hit(integer) to authenticated;
+grant execute on function public.raid_summary() to authenticated;
+
+-- ---------------------------------------------------------------------
 -- Done. Every new signup gets its own profile + progress row, and RLS
 -- guarantees no user can ever read or write another user's data.
 -- ---------------------------------------------------------------------

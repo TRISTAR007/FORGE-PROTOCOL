@@ -110,7 +110,7 @@ export default async function LandingPage() {
         </section>
 
         {/* Stats */}
-        <section aria-label="Level Up Dojo at a glance" className="border-y border-line bg-surface/60 backdrop-blur">
+        <section aria-label="Level Up Dojo at a glance" className="border-y border-line bg-surface/80">
           <dl className="mx-auto grid max-w-4xl grid-cols-2 gap-6 px-6 py-8 text-center sm:grid-cols-4">
             {[
               { value: String(Object.keys(EXERCISES).length), label: t('statExercises') },

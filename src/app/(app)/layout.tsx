@@ -17,7 +17,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect('/login');
   }
 
-  let { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+  // Fetch the profile and progress at the same time instead of one after the other.
+  const [{ data: existingProfile }, { data: existingProgress }] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
+    supabase.from('user_progress').select('data, updated_at').eq('user_id', user.id).maybeSingle(),
+  ]);
+  let profile = existingProfile;
 
   if (!profile) {
     const { data: created } = await supabase
@@ -32,11 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     profile = created;
   }
 
-  let { data: progressRow } = await supabase
-    .from('user_progress')
-    .select('data, updated_at')
-    .eq('user_id', user.id)
-    .maybeSingle();
+  let progressRow = existingProgress;
 
   if (!progressRow) {
     const { data: created } = await supabase

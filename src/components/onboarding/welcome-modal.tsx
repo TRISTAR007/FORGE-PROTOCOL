@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Building2, Dumbbell, Home } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,25 +11,25 @@ import { useProgress } from '@/context/progress-context';
 import { useCoach } from '@/hooks/use-coach';
 import { COACHES } from '@/lib/coaches';
 import { fromDisplayLength, fromDisplayWeight, lengthUnit, weightUnit } from '@/lib/units';
-import type { TrainingMode, UnitSystem } from '@/lib/types';
+import type { UnitSystem } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { PLAN_STEPS, PlanQuestion, PlanSummary, draftFromPlan, planFromDraft, type PlanDraft } from '@/components/plan/plan-questions';
 
-const MODES: { id: TrainingMode; icon: typeof Home }[] = [
-  { id: 'home', icon: Home },
-  { id: 'dumbbells', icon: Dumbbell },
-  { id: 'gym', icon: Building2 },
-];
+/** Steps: 0 coach · 1–5 plan questions · 6 plan summary · 7 starting measurements. */
+const SUMMARY_STEP = 1 + PLAN_STEPS;
+const LAST_STEP = SUMMARY_STEP + 1;
 
-/** First-run setup: pick a coach, pick a training mode, optionally log starting measurements. */
+/** First-run setup: pick a coach, answer the plan questions (incl. injuries), optionally log measurements. */
 export function WelcomeModal() {
   const t = useTranslations('onboarding');
   const tSettings = useTranslations('settings');
-  const { progress, settings, updateSettings, completeOnboarding } = useProgress();
+  const { progress, settings, updateSettings, completeOnboarding, setPlan } = useProgress();
   const { coach, line, say } = useCoach();
   const [step, setStep] = useState(0);
   const [weight, setWeight] = useState('');
   const [chest, setChest] = useState('');
   const [waist, setWaist] = useState('');
+  const [draft, setDraft] = useState<PlanDraft>(() => draftFromPlan(progress.plan, settings.trainingMode));
   const units = settings.units;
 
   const isNewAccount =
@@ -52,13 +51,15 @@ export function WelcomeModal() {
       waist: parse(waist, (n) => fromDisplayLength(n, units)),
     };
     const hasAny = Object.values(measurements).some((v) => v !== undefined);
+    setPlan(planFromDraft(draft));
+    if (draft.mode !== settings.trainingMode) updateSettings({ trainingMode: draft.mode });
     completeOnboarding(hasAny ? measurements : undefined);
   };
 
   return (
     <Modal open={shouldShow} onClose={() => completeOnboarding()} title={t('title')}>
       <div className="mb-5 flex gap-1.5">
-        {[0, 1, 2].map((i) => (
+        {Array.from({ length: LAST_STEP + 1 }, (_, i) => i).map((i) => (
           <span key={i} className={cn('h-1 flex-1 rounded-full', i <= step ? 'bg-brand-gradient' : 'bg-surface')} />
         ))}
       </div>
@@ -99,33 +100,10 @@ export function WelcomeModal() {
             ))}
           </div>
         </div>
-      ) : step === 1 ? (
-        <div className="space-y-4">
-          <div>
-            <h3 className="font-display text-lg tracking-wide">{t('step2Title')}</h3>
-            <p className="text-sm text-ink-muted">{t('step2Body')}</p>
-          </div>
-          <div className="space-y-2">
-            {MODES.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => updateSettings({ trainingMode: m.id })}
-                aria-pressed={settings.trainingMode === m.id}
-                className={cn(
-                  'flex w-full items-center gap-3 rounded-md border p-4 text-start transition-colors',
-                  settings.trainingMode === m.id ? 'border-forge bg-forge-dim/50' : 'border-line hover:bg-surface'
-                )}
-              >
-                <m.icon size={22} className={settings.trainingMode === m.id ? 'text-forge' : 'text-ink-muted'} />
-                <span>
-                  <span className="block font-semibold">{tSettings(`modes.${m.id}`)}</span>
-                  <span className="block text-xs text-ink-faint">{t(`mode_${m.id}`)}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
+      ) : step < SUMMARY_STEP ? (
+        <PlanQuestion step={step - 1} draft={draft} onChange={setDraft} />
+      ) : step === SUMMARY_STEP ? (
+        <PlanSummary draft={draft} />
       ) : (
         <div className="space-y-4">
           <div>
@@ -159,7 +137,7 @@ export function WelcomeModal() {
             {t('skip')}
           </Button>
         )}
-        {step < 2 ? (
+        {step < LAST_STEP ? (
           <Button
             onClick={() => {
               if (step === 0) say('start', {}, 0);

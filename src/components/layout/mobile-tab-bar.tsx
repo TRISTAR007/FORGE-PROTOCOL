@@ -12,7 +12,7 @@ export function MobileTabBar({ onMoreClick, moreActive }: { onMoreClick: () => v
   const t = useTranslations('nav');
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-line bg-bg-raised/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-line bg-bg-raised pb-[env(safe-area-inset-bottom)] lg:hidden">
       {MOBILE_PRIMARY.map((item) => {
         const active = isActivePath(pathname, item.href);
         return (
